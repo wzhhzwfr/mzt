@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>《毛中特》考前冲刺交互刷题系统（全量433题）</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(2px);
+    }
+    [inert], [inert] * {
+      opacity: 0.5;
+      cursor: default;
+      user-select: none;
+    }
+    .progress-bar {
+      accent-color: hsl(var(--brand-hue, 215) 80% 50%);
+      transition: accent-color 0.3s ease;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-4 md:p-6">
+  <div class="max-w-5xl mx-auto space-y-4">
+    <!-- Top Header & Stats -->
+    <header class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 md:p-5 shadow-sm">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">考前冲刺</span>
+            <h1 class="text-lg md:text-xl font-bold text-[var(--foreground)]">《毛中特》全量题库交互刷题系统</h1>
+          </div>
+          <p class="text-xs md:text-sm text-[var(--muted-foreground)] mt-1">
+            收录全部 <strong>433 道</strong> 考题（297 道单选 + 136 道判断）· 自动保存刷题进度与错题本
+          </p>
+        </div>
+
+        <!-- Global Live Stats -->
+        <div class="grid grid-cols-4 gap-2 text-center bg-[var(--background)] p-2.5 rounded-lg border border-[var(--border)]">
+          <div class="px-2">
+            <div class="text-xs text-[var(--muted-foreground)]">已刷题</div>
+            <div id="stat-done" class="text-sm md:text-base font-bold text-[var(--foreground)]">0/433</div>
+          </div>
+          <div class="px-2 border-l border-[var(--border)]">
+            <div class="text-xs text-[var(--muted-foreground)]">正确率</div>
+            <div id="stat-acc" class="text-sm md:text-base font-bold text-emerald-500">0%</div>
+          </div>
+          <div class="px-2 border-l border-[var(--border)]">
+            <div class="text-xs text-[var(--muted-foreground)]">错题本</div>
+            <div id="stat-wrong" class="text-sm md:text-base font-bold text-rose-500">0</div>
+          </div>
+          <div class="px-2 border-l border-[var(--border)]">
+            <div class="text-xs text-[var(--muted-foreground)]">收藏夹</div>
+            <div id="stat-star" class="text-sm md:text-base font-bold text-amber-500">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode Navigation Tabs -->
+      <nav aria-label="刷题模式选择" class="mt-4 pt-3 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="主要模式">
+          <button type="button" data-mode="practice" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] transition">
+            🎯 顺序/专项练习
+          </button>
+          <button type="button" data-mode="memorize" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition">
+            📖 极速背题模式
+          </button>
+          <button type="button" data-mode="exam" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition">
+            ⏱️ 模拟考试 (80题)
+          </button>
+          <button type="button" data-mode="wrong" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition">
+            ❌ 错题攻坚 (<span id="tab-wrong-count">0</span>)
+          </button>
+          <button type="button" data-mode="star" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition">
+            ⭐ 重点收藏 (<span id="tab-star-count">0</span>)
+          </button>
+          <button type="button" data-mode="list" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition">
+            🔍 题库检索对比
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-open-grid" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-80">
+            🗂️ 答题卡跳转
+          </button>
+          <button type="button" id="btn-reset-progress" class="px-3 py-1.5 rounded-lg text-xs font-medium text-rose-500 bg-[var(--background)] border border-[var(--border)] hover:opacity-80">
+            重置记录
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Filter & Search Bar -->
+    <section aria-label="筛选与搜索控制栏" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 shadow-sm">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        <!-- Chapter Filter -->
+        <div class="md:col-span-4 flex items-center gap-2">
+          <label for="filter-category" class="text-xs font-medium text-[var(--muted-foreground)] shrink-0">章节范围:</label>
+          <select id="filter-category" class="w-full bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs md:text-sm">
+            <option value="all">全部章节 (433题)</option>
+            <option value="一、毛泽东思想及历史地位">一、毛泽东思想及历史地位 (68题)</option>
+            <option value="二、新民主主义革命理论">二、新民主主义革命理论 (81题)</option>
+            <option value="三、社会主义改造理论">三、社会主义改造理论 (120题)</option>
+            <option value="四、建设道路初步探索">四、建设道路初步探索 (48题)</option>
+            <option value="五、邓小平理论">五、邓小平理论 (77题)</option>
+            <option value="六、三个代表与科学发展观">六、三个代表与科学发展观 (39题)</option>
+          </select>
+        </div>
+
+        <!-- Question Type Filter -->
+        <div class="md:col-span-3 flex items-center gap-2">
+          <label for="filter-type" class="text-xs font-medium text-[var(--muted-foreground)] shrink-0">题型:</label>
+          <select id="filter-type" class="w-full bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs md:text-sm">
+            <option value="all">全部题型 (433)</option>
+            <option value="single">单选题 (297)</option>
+            <option value="judge">判断题 (136)</option>
+            <option value="judge_false">⚡ 判断题仅看错题(N) (57)</option>
+            <option value="unanswered">仅看未做题目</option>
+          </select>
+        </div>
+
+        <!-- Search Box wrapped in semantic <search> -->
+        <search class="md:col-span-5">
+          <form id="search-form" class="flex items-center gap-1.5">
+            <label for="search-input" class="sr-only">搜索题目关键词</label>
+            <input
+              type="search"
+              id="search-input"
+              placeholder="搜关键词对比（如：遵义会议、十大关系、赎买）..."
+              class="w-full bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs md:text-sm"
+            >
+            <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-[var(--primary-foreground)] shrink-0">
+              搜索
+            </button>
+            <button type="button" id="btn-clear-search" class="px-2.5 py-1.5 rounded-lg text-xs text-[var(--muted-foreground)] border border-[var(--border)] shrink-0 hidden">
+              清除
+            </button>
+          </form>
+        </search>
+      </div>
+
+      <!-- Quick Settings Bar -->
+      <div class="mt-3 pt-2.5 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted-foreground)]">
+        <div class="flex flex-wrap items-center gap-4">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chk-auto-next" checked class="rounded border-[var(--border)]">
+            <span>答对自动下一题 (0.5秒)</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chk-random-order" class="rounded border-[var(--border)]">
+            <span>打乱题目顺序</span>
+          </label>
+          <span class="hidden sm:inline text-[var(--muted-foreground)]">
+            ⌨️ 快捷键：数字键 <code>1-4</code> 或 <code>A-D</code> 作答 · <code>← / →</code> 切题 · <code>F</code> 收藏
+          </span>
+        </div>
+        <div id="exam-timer-box" class="hidden items-center gap-3 font-semibold text-amber-500">
+          <span>⏱️ 剩余时间: <strong id="exam-timer-text">45:00</strong></span>
+          <button type="button" id="btn-submit-exam" class="px-2.5 py-1 rounded bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+            交卷判分
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Area -->
+    <main id="main-area">
+      <!-- Single Card Quiz View -->
+      <article id="card-view" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 md:p-6 shadow-sm space-y-5">
+        <!-- Progress Header -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <div class="flex items-center gap-2">
+              <span id="q-badge-type" class="px-2 py-0.5 rounded font-semibold bg-blue-500/15 text-blue-500">单选题</span>
+              <span id="q-badge-cat" class="px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">一、毛泽东思想及历史地位</span>
+              <span id="q-badge-id" class="text-[var(--muted-foreground)]">总第 #1 题</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <label for="quiz-progress" class="sr-only">当前刷题进度</label>
+              <span id="q-counter" class="font-semibold text-[var(--foreground)]">1 / 433</span>
+              <button type="button" id="btn-star-current" class="px-2.5 py-1 rounded-lg border border-[var(--border)] text-xs font-medium hover:opacity-80">
+                ☆ 收藏本题
+              </button>
+            </div>
+          </div>
+          <progress id="quiz-progress" class="progress-bar w-full h-1.5 rounded overflow-hidden" value="1" max="433" style="--brand-hue: 215;"></progress>
+        </div>
+
+        <!-- Question Stem -->
+        <div class="py-2">
+          <h2 id="q-stem" class="text-base md:text-lg font-semibold leading-relaxed text-[var(--foreground)]">
+            题目加载中...
+          </h2>
+        </div>
+
+        <!-- Options List -->
+        <div id="q-options" role="group" aria-label="题目选项" class="space-y-2.5">
+        </div>
+
+        <!-- Explanation / Feedback Box -->
+        <div id="q-feedback" class="hidden rounded-xl p-4 border text-sm space-y-1.5">
+          <div id="q-feedback-title" class="font-bold"></div>
+          <div id="q-feedback-body" class="text-xs md:text-sm leading-relaxed"></div>
+        </div>
+
+        <!-- Card Footer Navigation -->
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
+          <button type="button" id="btn-prev" class="px-4 py-2 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-80 disabled:opacity-40">
+            ← 上一题
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-show-ans" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-80">
+              👁️ 看答案与解析
+            </button>
+          </div>
+
+          <button type="button" id="btn-next" class="px-5 py-2 rounded-lg text-xs md:text-sm font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-40">
+            下一题 →
+          </button>
+        </div>
+      </article>
+
+      <!-- List / Search Comparison View (Hidden by default) -->
+      <section id="list-view" aria-label="题目列表对比视图" class="hidden space-y-3">
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 flex items-center justify-between">
+          <div class="text-sm font-semibold">
+            共筛选出 <span id="list-count" class="text-blue-500 font-bold">0</span> 道题目
+          </div>
+          <label class="inline-flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" id="chk-list-mask" class="rounded border-[var(--border)]">
+            <span>遮挡答案自测（点击单题展开）</span>
+          </label>
+        </div>
+        <div id="list-container" class="space-y-2.5"></div>
+      </section>
+    </main>
+
+    <!-- Collapsible High-Frequency Cheat Sheet (<details> & <summary>) -->
+    <section aria-label="考前高频考点速查折叠面板" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm space-y-2">
+      <h2 class="text-sm font-bold text-[var(--foreground)] mb-2">📌 随手查：考前易混高频考点速记</h2>
+      <details name="cheatsheet" class="border border-[var(--border)] rounded-lg p-3 bg-[var(--background)]">
+        <summary class="text-xs md:text-sm font-semibold cursor-pointer">1. 重要著作“第一次 / 标志”速查（点击展开）</summary>
+        <div class="mt-2.5 pt-2.5 border-t border-[var(--border)] text-xs space-y-1.5 text-[var(--muted-foreground)]">
+          <p>• <strong>《反对本本主义》</strong>：第一篇反对教条主义文献；初步界定党的思想路线基本含义。</p>
+          <p>• <strong>《论新阶段》</strong>（六届六中全会）：第一次提出“马克思主义中国化”；第一次借用“实事求是”。</p>
+          <p>• <strong>《新民主主义论》</strong>：第一次完整提出新民主主义政治、经济、文化纲领；集中体现新民主主义革命理论。</p>
+          <p>• <strong>《论联合政府》</strong>（七大）：把新民主主义政治、经济、文化与党的基本纲领结合起来具体阐述。</p>
+          <p>• <strong>《论人民民主专政》</strong>：为新中国的建立做了理论和政策准备。</p>
+          <p>• <strong>《论十大关系》</strong>：探索中国社会主义建设道路的开山之作/标志；基本方针是调动一切积极因素；首要经济关系是农轻重。</p>
+          <p>• <strong>《关于正确处理人民内部矛盾的问题》</strong>：第一次系统阐述社会主义社会矛盾；首次把农轻重提到工业化道路高度。</p>
+        </div>
+      </details>
+      <details name="cheatsheet" class="border border-[var(--border)] rounded-lg p-3 bg-[var(--background)]">
+        <summary class="text-xs md:text-sm font-semibold cursor-pointer">2. 社会主义改造“性质判断”秒杀口诀（点击展开）</summary>
+        <div class="mt-2.5 pt-2.5 border-t border-[var(--border)] text-xs space-y-1.5 text-[var(--muted-foreground)]">
+          <p>• <strong>农业合作化三步</strong>：互助组（社会主义<strong>萌芽</strong>）→ 初级社（<strong>半社会主义</strong>）→ 高级社（<strong>完全社会主义</strong>）。</p>
+          <p>• <strong>新民主主义社会经济成分</strong>：国营经济（<strong>完全社会主义</strong>）；合作社经济（<strong>半社会主义</strong>，个体向集体过渡）；国家资本主义（私营向国营过渡）。</p>
+          <p>• <strong>资本主义工商业改造三步</strong>：① 委托加工/计划订货/统购包销（初级形式国家资本主义，<strong>仍是私营企业/有社会主义因素</strong>）→ ② 个别企业公私合营（<strong>半社会主义性质</strong>，利润四马分肥）→ ③ 全行业公私合营（定股定息，改造完成标志，题库第149题标准答案选 <strong>B 具有社会主义的因素</strong>）。</p>
+        </div>
+      </details>
+      <details name="cheatsheet" class="border border-[var(--border)] rounded-lg p-3 bg-[var(--background)]">
+        <summary class="text-xs md:text-sm font-semibold cursor-pointer">3. 四大理论“精髓 / 核心 / 关键 / 基本问题”对比（点击展开）</summary>
+        <div class="mt-2.5 pt-2.5 border-t border-[var(--border)] text-xs space-y-1.5 text-[var(--muted-foreground)]">
+          <p>• <strong>毛泽东思想</strong>：精髓是<strong>实事求是</strong>；活的灵魂是<strong>实事求是、群众路线、独立自主</strong>（注意：判断题说三者都是精髓选 N！）。</p>
+          <p>• <strong>邓小平理论</strong>：精髓是<strong>解放思想、实事求是</strong>；首要基本问题是<strong>什么是社会主义、怎样建设社会主义</strong>。</p>
+          <p>• <strong>“三个代表”</strong>：关键在<strong>坚持与时俱进</strong>，核心在<strong>保持党的先进性</strong>，本质在<strong>坚持执政为民</strong>；回答<strong>建设什么样的党、怎样建设党</strong>。</p>
+          <p>• <strong>科学发展观</strong>：第一要义是<strong>发展</strong>，核心立场是<strong>以人为本</strong>，基本要求是<strong>全面协调可持续</strong>，根本方法是<strong>统筹兼顾</strong>；回答<strong>实现什么样的发展、怎样发展</strong>。</p>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- Native Modal Dialog for Question Grid / Answer Sheet -->
+  <dialog id="grid-dialog" closedby="any" class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl p-5 w-11/12 max-w-3xl shadow-xl">
+    <form method="dialog" class="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+      <div>
+        <h2 class="text-base font-bold">🗂️ 答题卡与题号快速跳转</h2>
+        <p class="text-xs text-[var(--muted-foreground)] mt-0.5">绿色=答对 · 红色=答错 · 边框高亮=当前题 · ★=已收藏</p>
+      </div>
+      <button value="close" class="px-3 py-1 rounded-lg text-xs font-medium border border-[var(--border)] hover:opacity-80">
+        关闭 (Esc)
+      </button>
+    </form>
+    <div id="grid-container" class="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 gap-1.5 my-4 max-h-96 overflow-y-auto p-1">
+    </div>
+  </dialog>
+
+  <!-- Native Modal Dialog for Mock Exam Result -->
+  <dialog id="exam-dialog" closedby="any" class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl p-6 w-11/12 max-w-md shadow-xl">
+    <form method="dialog" class="space-y-4">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h2 class="text-lg font-bold">🏆 模拟考试成绩单</h2>
+        <button value="close" class="px-2.5 py-1 rounded text-xs border border-[var(--border)]">关闭</button>
+      </div>
+      <div id="exam-result-content" class="space-y-3 text-sm"></div>
+      <div class="pt-3 border-t border-[var(--border)] flex justify-end gap-2">
+        <button type="button" id="btn-exam-review-wrong" class="px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 text-white">
+          查看本次错题
+        </button>
+        <button value="close" class="px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">
+          继续刷题
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    // Full 433 Questions Bank injected below
+    const RAW_QUESTIONS = [{"id": 1, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "1938年，毛泽东在六届六中全会上第一次提出“马克思主义中国化”这一命题是在下列哪个报告中？", "options": ["《论新阶段》", "《论持久战》", "《湖南农民运动考察报告》", "《井冈山的斗争》"], "a": "A"}, {"id": 2, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "集中体现毛泽东新民主主义革命理论的著作是（  ）。", "options": ["《中国社会各阶级的分析》", "《新民主主义论》", "《〈共产党人〉发刊词》", "《中国革命和中国共产党》"], "a": "B"}, {"id": 3, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想形成时期的时代主题是（  ）。", "options": ["革命与发展", "战争与发展", "战争与革命", "和平与发展"], "a": "C"}, {"id": 4, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想形成和发展的实践基础是中国共产党领导人民进行（  ）的成功实践。", "options": ["改革和发展", "革命和建设", "探索和实践", "建设和改革"], "a": "B"}, {"id": 5, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想确立为党的指导思想并写入党章是在（  ）。", "options": ["延安整风时期", "遵义会议", "党的六届六中全会", "党的七大"], "a": "D"}, {"id": 6, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东在全党的实际领导地位是在哪次会议上确立的？", "options": ["党的六届六中全会", "遵义会议", "党的七大", "延安整风时期"], "a": "B"}, {"id": 7, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想和中国特色社会主义理论体系这两大理论的共同理论基础是（  ）。", "options": ["马克思列宁主义", "共产主义理想", "社会主义初级阶段理论", "实事求是思想"], "a": "A"}, {"id": 8, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党内第一个使用“毛泽东思想”概念并产生较大影响的是（  ）。", "options": ["周恩来", "刘少奇", "朱德", "王稼祥"], "a": "D"}, {"id": 9, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "党的七大通过的《中国共产党章程》在总纲中确定，以马克思列宁主义的理论与中国革命的实践之统一的思想——（ ），作为我们党一切工作的指南。", "options": ["毛泽东思想", "邓小平理论", "马克思主义中国化", "马列主义"], "a": "A"}, {"id": 10, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党对待马克思主义唯一正确和科学的态度是（  ）。", "options": ["坚持马克思主义基本原理与中国具体实际相结合", "坚持维护马克思主义的原创性", "靠考证马克思关于某一问题的某一论证来解决问题", "马克思主义是神圣不可侵犯的"], "a": "A"}, {"id": 11, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东第一次借用中国传统文化的“实事求是”来提倡马克思主义同中国实际相结合的科学态度是在（  ）。", "options": ["《反对本本主义》", "《古田会议决议》", "《改造我们的学习》", "《论新阶段》"], "a": "D"}, {"id": 12, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "第一次全面、系统地提出并阐释了“毛泽东思想”的科学定义，并作为党的指导思想写进党章的会议是（  ）。", "options": ["遵义会议", "党的七届二中全会", "党的七大", "党的八大"], "a": "C"}, {"id": 13, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想形成的最主要标志是（  ）。", "options": ["农村包围城市、武装夺取政权的革命道路理论的提出", "实事求是思想路线的提出", "党指挥枪原则的提出", "党的七大把毛泽东思想确立为党的指导思想"], "a": "A"}, {"id": 14, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党把毛泽东思想作为自己的指导思想，主要是因为（  ）。", "options": ["毛泽东思想是中华民族的优秀文化", "毛泽东思想是中国共产党集体智慧的结晶", "毛泽东思想是中国化的马克思主义", "毛泽东思想对中国革命和建设具有普遍的指导意义"], "a": "D"}, {"id": 15, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "下列不是毛泽东思想产生和形成的思想理论条件的是（  ）。", "options": ["新文化运动的兴起", "工人运动的发展", "俄国十月革命的胜利，使中国先进分子转而向俄国学习，开始接受和传播马克思主义", "马列主义在中国的广泛传播"], "a": "B"}, {"id": 16, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "土地革命战争时期，中国共产党人成功开辟了新民主主义革命道路，这就是（  ）。", "options": ["城市工人武装起义", "农村包围城市、武装夺取政权", "以城市为中心", "和平进入社会主义"], "a": "B"}, {"id": 17, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想趋于成熟是在（  ）。", "options": ["遵义会议以后", "大革命时期", "土地革命战争时期", "社会主义建设时期"], "a": "A"}, {"id": 18, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想开始形成的标志是（  ）。", "options": ["人民战争思想的形成", "新民主主义革命理论的完整论述", "农村包围城市道路理论的提出", "人民军队建设理论的产生"], "a": "C"}, {"id": 19, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党成立前后，为毛泽东思想的萌芽准备了科学的世界观和方法论基础的是（  ）。", "options": ["工人阶级队伍的壮大及工人运动发展", "俄国十月革命胜利成果的总结", "马克思列宁主义在中国的广泛传播", "新文化运动中激进知识分子的参加"], "a": "C"}, {"id": 20, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东明确提出要把马克思列宁主义的基本原理同中国革命和建设的具体实际进行“第二次结合，找出在中国怎样建设社会主义的道路”的任务是在（  ）。", "options": ["遵义会议以后", "第一次国内革命战争时期", "社会主义初级阶段", "解放战争时期和中华人民共和国成立以后"], "a": "D"}, {"id": 21, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "关于在毛泽东指引下党领导人民找到的道路的认识说法不正确的是（  ）。", "options": ["新民主主义革命的道路", "新民主主义向社会主义过渡的道路", "改革开放和社会主义建设的道路", "建立中华人民共和国"], "a": "C"}, {"id": 22, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党新民主主义革命理论的形成，标志着毛泽东思想（  ）。", "options": ["开始形成", "达到成熟", "继续发展", "基本形成"], "a": "B"}, {"id": 23, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "就毛泽东一生来看，对他的功过评价中肯的是（  ）。", "options": ["过大于功", "功大于过", "功过参半", "有功无过"], "a": "B"}, {"id": 24, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中共十一届三中全会后对毛泽东思想的历史地位作出科学评价的文献是（  ）。", "options": ["《解放思想，实事求是，团结一致向前看》", "《关于建国以来党的若干历史问题的决议》", "《全面开创社会主义现代化建设的新局面》", "《关于社会主义精神文明建设的决议》"], "a": "B"}, {"id": 25, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东和毛泽东思想的认识错误倾向主要有（  ）。", "options": ["实事求是", "“两个凡是”和全盘否定", "历史分析法", "区分过失与功绩"], "a": "B"}, {"id": 26, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "关于毛泽东晚年错误思想认识正确的是（  ）。", "options": ["毛泽东晚年思想都属于毛泽东思想一部分", "毛泽东晚年错误思想不属于毛泽东思想", "毛泽东晚年思想都是错误的思想", "毛泽东晚年错误思想就是指“文化大革命”的思想"], "a": "B"}, {"id": 27, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "下列著作中，被认为是中国共产党人第一篇反对教条主义的重要文献是（  ）。", "options": ["《井冈山的斗争》", "《反对本本主义》", "《星星之火，可以燎原》", "《中国的红色政权为什么能够存在？》"], "a": "B"}, {"id": 28, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "20世纪的中国经历了三次历史性巨变，以毛泽东为核心的第一代领导集体领导下发生的历史性巨变是（  ）。", "options": ["推翻清王朝，结束封建帝制", "建立中华人民共和国和社会主义制度", "进行国民革命，推翻北洋军阀政权", "实行改革开放，进行社会主义现代化建设"], "a": "B"}, {"id": 29, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "党领导人民在极端艰苦的环境下，创建了工农红军，建立了农村革命根据地和工农政权是在（  ）时期。", "options": ["第一次国内革命时期", "土地革命战争时期", "解放战争时期", "社会主义建设时期"], "a": "B"}, {"id": 30, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东在（  ）文章中初步界定了中国共产党人的思想路线的基本含义。", "options": ["《反对本本主义》", "《实践论》", "《矛盾论》", "《论十大关系》"], "a": "A"}, {"id": 31, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "建设中国特色的社会主义路线、方针、政策的检验标准是（  ）。", "options": ["马克思主义的经典著作", "领导人的想法和意志", "决策机关的权力大小", "实践"], "a": "D"}, {"id": 32, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "坚持实事求是的思想路线，在中国革命、建设和改革问题上，最根本的要求就是要（  ）。", "options": ["以经济建设为中心", "坚定不移地走自己的路", "坚持改革开放", "坚持四项基本原则"], "a": "B"}, {"id": 33, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中华人民共和国成立后，曾经认为公有制程度越高越好，对（  ）采取了简单排斥的做法。", "options": ["非公有制经济", "公有制", "按劳分配", "社会主义分配制度"], "a": "A"}, {"id": 34, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党人认识世界改造世界的的根本要求是（  ）。", "options": ["群众路线", "独立自主", "主观能动", "实事求是"], "a": "D"}, {"id": 35, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党的根本工作路线是（  ）。", "options": ["组织路线", "政治路线", "干部路线", "群众路线"], "a": "D"}, {"id": 36, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国革命和建设的基本立足点是（  ）。", "options": ["独立自主", "群众路线", "实事求是", "改革开放"], "a": "A"}, {"id": 37, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "下列关于毛泽东思想说法错误的是（  ）。", "options": ["毛泽东思想是马列主义在中国的运用和发展", "毛泽东思想是关于中国革命和建设的正确的理论原则和经验总结", "毛泽东思想是中国共产党集体智慧结晶", "毛泽东思想是局限于中国革命的理论"], "a": "D"}, {"id": 38, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想是马克思主义与中国实际相结合的（  ）。", "options": ["第一次历史性飞跃形成的理论成果", "初步成果", "社会主义新时代理论成果", "第二次历史性飞跃形成的理论成果"], "a": "A"}, {"id": 39, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中国共产党把毛泽东思想作为指导思想，最根本的原因是（  ）。", "options": ["毛泽东思想吸收了传统文化的精华", "毛泽东思想是中华民族的精神支柱", "毛泽东思想是中国化的马克思主义", "毛泽东思想被实践证明是正确的"], "a": "D"}, {"id": 40, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东指出，（ ）是党的生命，必须根据组织形势，阶级关系和实际情况及其变化制定党的政策。", "options": ["政策和策略", "思想政治和文化工作", "革命军队建设和军事战略", "党的建设"], "a": "A"}, {"id": 41, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "中华人民共和国成立后，毛泽东提出必须加强国防建设，建设现代化革命武装力量和发展现代化国防技术等重要思想形成的理论是（  ）。", "options": ["革命军队建设和军事战略的理论", "社会主义革命和社会主义建设理论", "政策和策略理论", "新民主主义革命理论"], "a": "A"}, {"id": 42, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东的思想理论当中指出政策和策略是党的生命，必须根据组织形势，阶级关系和实际情况及其变化制定党的政策，把（  ）结合起来。", "options": ["时效性和原则性", "原则性和灵活性", "原则性和根本性", "时效性和根本性"], "a": "B"}, {"id": 43, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "党的十一届六中全会上通过的《中国共产党中央委员会关于建国以来党的若干历史问题的决议》提出的重要理论观点是（  ）。", "options": ["党的领导权", "毛泽东思想的活的灵魂", "马克思主义中国化", "人民民主专政"], "a": "B"}, {"id": 44, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "下面对于独立自主认识不正确的是（  ）。", "options": ["是中华民族的优良传统", "是我们立党立国的重要原则", "也反映了老一辈无产阶级革命家决策时的坚定决策和信念", "这要求我们关起门来搞建设"], "a": "D"}, {"id": 45, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "关于毛泽东思想活的灵魂说法错误的是（  ）。", "options": ["成熟于土地革命时期", "体现了马克思主义的基本立场、观点和方法", "具有中国共产党人的特色", "是党和人民十分宝贵的精神财富"], "a": "A"}, {"id": 46, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想的精髓是（  ）。", "options": ["实事求是", "群众路线", "统一战线", "独立自主"], "a": "A"}, {"id": 47, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "在党的历史上，第一个明确地提出解决思想路线这个问题的领导人是（  ）。", "options": ["毛泽东", "刘少奇", "周恩来", "邓小平"], "a": "A"}, {"id": 48, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "对“实事求是”做马克思主义的解释并把它确立为中国共产党的思想路线的是（  ）。", "options": ["毛泽东", "习近平", "刘少奇", "邓小平"], "a": "A"}, {"id": 49, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "“一切为了群众，一切依靠群众，从群众中来，到群众中去，把党的正确主张变为群众的自觉行动。 ”这是党章对（  ）的表述。", "options": ["党的思想路线", "党的政治路线", "党的群众路线", "党的组织路线"], "a": "C"}, {"id": 50, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "我们讲一切从实际出发，其中我国社会面临的最大的实际是（  ）。", "options": ["我国是一个人口和资源大国", "我国经济总量快速增长，已经达到中等发达国家水平", "我国综合国力上升，国际影响力真正不断地增强", "我国正处于并将长期处于社会主义初级阶段"], "a": "D"}, {"id": 51, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "党的思想路线要求我们研究问题和作决策的出发点是（  ）。", "options": ["理论知识", "客观实际", "主观世界", "党的理论"], "a": "B"}, {"id": 52, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "作为党的思想路线“实事求是”中的“是”是指（  ）。", "options": ["客观存在着的一切事物", "主观对客观的能动反映", "客观事物的内部联系，即规律性", "客观事物的运动、变化和发展，即辩证法"], "a": "C"}, {"id": 53, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "实事求是的基本含义是（  ）。", "options": ["从客观事物的现象出发", "找出事物的因果联系", "从客观存在的一切事物中，去研究事物的发展规律", "发现事物本质与现象的区别"], "a": "C"}, {"id": 54, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "20世纪30年代，中国共产党内最早提出反对教条主义任务的领导人是（  ）。", "options": ["毛泽东", "刘少奇", "周恩来", "张闻天"], "a": "A"}, {"id": 55, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "实事求是的“实事”指的是（  ）。", "options": ["研究", "从实际出发", "客观事物", "客观事物的内在规律性"], "a": "C"}, {"id": 56, "type": "single", "category": "一、毛泽东思想及历史地位", "q": "贯穿于马克思主义中国化理论成果始终的是（  ）。", "options": ["理论创新", "实事求是", "本本主义", "中体西用"], "a": "B"}, {"id": 57, "type": "single", "category": "四、建设道路初步探索", "q": "在关于社会主义发展阶段问题上，毛泽东提出，社会主义可以被分为两个阶段，其中第二个阶段是（  ）。", "options": ["社会主义中级阶段", "社会主义初级阶段", "共产主义初级阶段", "比较发达的社会主义"], "a": "D"}, {"id": 58, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东关于社会主义社会矛盾的学说与八大关于社会主要矛盾的论断是（  ）。", "options": ["基本一致", "完全不同", "没有关系", "互为冲突"], "a": "A"}, {"id": 59, "type": "single", "category": "四、建设道路初步探索", "q": "（  ）提出了把我国由农业国变为工业国，实现国家现代化的构想。", "options": ["党的七届二中全会", "党的七届三中全会", "中共七大", "中共八大"], "a": "A"}, {"id": 60, "type": "single", "category": "四、建设道路初步探索", "q": "建国初，党曾提出在20世纪内，分两步走把我国建设成为“四个（  ）”的社会主义国家的构想。", "options": ["全面化", "科技化", "现代化", "知识化"], "a": "C"}, {"id": 61, "type": "single", "category": "四、建设道路初步探索", "q": "早在1953年，中华人民共和国开始第一个五年计划建设时，（  ）就提出要学习先进的科学技术来建设我们的国家。", "options": ["邓小平", "周恩来", "毛泽东", "刘少奇"], "a": "C"}, {"id": 62, "type": "single", "category": "四、建设道路初步探索", "q": "我国坚持在（  ）基础上发展同所有国家的友好合作关系。", "options": ["和平共处五项原则", "独立自主", "合作共赢", "互惠互利"], "a": "A"}, {"id": 63, "type": "single", "category": "二、新民主主义革命理论", "q": "中国资产阶级民主革命的时代背景发生根本转变的标志是（  ）。", "options": ["俄国十月革命的胜利", "新文化运动", "五四运动", "戊戌变法"], "a": "A"}, {"id": 64, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义革命的领导阶级是（  ）。", "options": ["资产阶级", "小资产阶级", "无产阶级", "农民阶级"], "a": "C"}, {"id": 65, "type": "single", "category": "二、新民主主义革命理论", "q": "近代中国的最主要矛盾是（  ）。", "options": ["封建主义与人民大众的矛盾", "帝国主义与中华民族的矛盾", "生产力与生产关系的矛盾", "经济基础与上层建筑的矛盾"], "a": "B"}, {"id": 66, "type": "single", "category": "二、新民主主义革命理论", "q": "近代中国的社会性质是（  ）。", "options": ["前资本主义社会", "半殖民地半封建社会", "政治、经济、文化发展平衡的社会", "资本主义社会"], "a": "B"}, {"id": 67, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）的胜利，改变了整个世界历史的方向，划分了整个世界历史的时代，开辟了世界无产阶级社会主义革命的新纪元，标志着人类历史开始了由资本主义向社会主义转变的进程。", "options": ["俄国十月革命的胜利", "新文化运动", "五四运动", "辛亥革命"], "a": "A"}, {"id": 68, "type": "single", "category": "二、新民主主义革命理论", "q": "中国无产阶级开始以独立的政治力量登上历史舞台，由自在阶级转变为自为的阶级的历史事件是（  ）。", "options": ["俄国十月革命的胜利", "五四运动", "辛亥革命", "新文化运动"], "a": "B"}, {"id": 69, "type": "single", "category": "二、新民主主义革命理论", "q": "系统化的适合中国国情的新民主主义革命理论形成于（  ）时期。", "options": ["抗日战争", "辛亥革命", "解放战争", "鸦片战争"], "a": "A"}, {"id": 70, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义革命理论是在总结（  ）正反两方面实践经验的基础上形成的。", "options": ["罢工运动", "革命斗争", "统一战线", "党的建设"], "a": "B"}, {"id": 71, "type": "single", "category": "二、新民主主义革命理论", "q": "党在领导和建立抗日民族统一战线的革命过程中，采取的策略方针是（  ）。", "options": ["又团结又斗争、以斗争求团结", "发展进步势力、争取中间势力、孤立顽固势力", "利用矛盾，争取多数，反对少数，各个击破", "有理、有利、有节"], "a": "B"}, {"id": 72, "type": "single", "category": "二、新民主主义革命理论", "q": "毛泽东思想关于党的建设理论最核心的内容和最主要的特点是（  ）。", "options": ["发扬优良传统作风", "着重于从思想上建党", "把整风作为马克思主义思想教育的主要形式", "加强党员的党性修养"], "a": "B"}, {"id": 73, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级及其政党必须深入农村，从解决农民的（  ）问题入手，组织、发动和武装农民，使革命战争获得广大农民的支持和参加，为最后夺取全国政权奠定基础。", "options": ["温饱", "吃饭", "土地", "利益"], "a": "C"}, {"id": 74, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）是中国革命的战略阵地，是进行武装斗争和开展土地革命的依托。", "options": ["城市革命根据地", "农村革命根据地", "海上根据地", "城市根据地"], "a": "B"}, {"id": 75, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）理论是马克思主义中国化的重要理论成果，开辟了马克思主义中国化的发展道路。", "options": ["旧民主主义革命", "资本主义", "新民主主义革命", "共产主义"], "a": "C"}, {"id": 76, "type": "single", "category": "二、新民主主义革命理论", "q": "毛泽东最早深入分析中国社会各阶级的经济地位及其在革命中的表现和作用的著作是（  ）。", "options": ["《星星之火，可以燎原》", "《中国社会各阶级的分析》", "《湖南农民运动考察报告》", "《中国的红色政权为什么能够存在？》"], "a": "B"}, {"id": 77, "type": "single", "category": "二、新民主主义革命理论", "q": "中国革命统一战线的根本问题是（  ）。", "options": ["同盟军问题", "工农联盟问题", "正确处理同资产阶级的关系", "实现无产阶级领导权问题"], "a": "D"}, {"id": 78, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级政党建立统一战线要解决的是（  ）。", "options": ["与资产阶级关系的问题", "无产阶级的领导权问题", "无产阶级同盟军的问题", "与农民阶级的关系问题"], "a": "C"}, {"id": 79, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义革命时期，党领导统一战线，积累了丰富的经验。其中，最根本的经验是正确处理好（  ）。", "options": ["与农民阶级的关系", "与工人阶级的关系", "与资产阶级的关系", "与知识分子的关系"], "a": "C"}, {"id": 80, "type": "single", "category": "二、新民主主义革命理论", "q": "中国共产党在领导建立抗日民族统一战线的实践中，强调必须坚持独立自主的原则。其实质是（  ）。", "options": ["坚持无产阶级在统一战线中的领导权", "保持共产党在思想上、政治上和组织上的独立性", "有效地与敌人做斗争", "正确处理民族战争和阶级斗争的关系"], "a": "A"}, {"id": 81, "type": "single", "category": "二、新民主主义革命理论", "q": "中国革命斗争的主要形式是（  ）。", "options": ["罢工斗争", "议会斗争", "和平请愿", "武装斗争"], "a": "D"}, {"id": 82, "type": "single", "category": "二、新民主主义革命理论", "q": "要取得中国革命的胜利，主要依靠的是（  ）。", "options": ["人民军队", "群众团体", "统一战线", "政党"], "a": "A"}, {"id": 83, "type": "single", "category": "二、新民主主义革命理论", "q": "在新民主主义革命的战争实践中，中国共产党逐步确立的人民军队建设的根本原则是（  ）。", "options": ["坚持全心全意为人民服务", "党指挥枪", "坚持马克思主义的政治方向", "发挥思想政治工作的作用"], "a": "B"}, {"id": 84, "type": "single", "category": "二、新民主主义革命理论", "q": "下列属于无产阶级政党策略思想重要内容的是（  ）。", "options": ["暗杀等暴力手段", "党的建设", "统一战线", "群众路线"], "a": "C"}, {"id": 85, "type": "single", "category": "二、新民主主义革命理论", "q": "在半殖民地半封建的中国社会里，内无民主制度而受（  ）的压迫，外无民族独立而受帝国主义的压迫。", "options": ["封建主义", "保守主义", "封闭主义", "专制主义"], "a": "A"}, {"id": 86, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）为农村革命根据地建设和发展提供了重要的主观条件。", "options": ["广泛的群众基础", "全国革命形势的向前发展", "相当力量游击队的存在", "党的领导的有力量及其政策的不错误"], "a": "D"}, {"id": 87, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）为农村革命根据地的创立、巩固和发展提供了坚强后盾。", "options": ["相当力量正式红军的存在", "广泛的群众基础", "全国革命形势的向前发展", "党的领导的有力量及其政策的不错误"], "a": "A"}, {"id": 88, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）为在农村建设革命根据地提供了客观条件。", "options": ["相当力量正式红军的存在", "全国革命形势的向前发展", "大量游击队的存在", "党的领导的有力量及其政策的不错误"], "a": "B"}, {"id": 89, "type": "single", "category": "二、新民主主义革命理论", "q": "中国民主革命的基本内容是（  ）。", "options": ["罢工运动", "党的建设", "土地革命", "统一战线"], "a": "C"}, {"id": 90, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）是中国革命的主要形式，是农村革命根据地建设和土地革命的强有力保证。", "options": ["党的建设", "罢工运动", "统一战线", "武装斗争"], "a": "D"}, {"id": 91, "type": "single", "category": "二、新民主主义革命理论", "q": "农村革命根据地是中国革命的（  ），是进行武装斗争和开展土地革命的依托。", "options": ["理论阵地", "战略阵地", "思想阵地", "文化阵地"], "a": "B"}, {"id": 92, "type": "single", "category": "二、新民主主义革命理论", "q": "中国革命道路理论，是党运用马克思主义的立场、观点和方法，分析、研究和解决中国革命具体问题的光辉典范，对于推进（  ）具有重要的方法论意义。", "options": ["马克思主义原则化", "马克思主义中国化", "马克思主义世界化", "马克思主义普遍化"], "a": "B"}, {"id": 93, "type": "single", "category": "二、新民主主义革命理论", "q": "（  ）是帝国主义统治中国和封建军阀实行专制统治的社会基础。", "options": ["城市小资产阶级", "封建地主阶级", "工人阶级", "资产阶级"], "a": "B"}, {"id": 94, "type": "single", "category": "二、新民主主义革命理论", "q": "社会主义革命是无产阶级性质的革命，它所要实现的目标是（  ）和改造小生产者的私有制。", "options": ["消灭资本主义剥削制度", "消灭资本家的肉体", "根本解决资本主义的内在矛盾", "实现共产主义"], "a": "A"}, {"id": 95, "type": "single", "category": "二、新民主主义革命理论", "q": "与新民主主义国体相适应的政体是实行（  ）的人民代表大会制度。", "options": ["民主集中制", "无政府制", "议会制", "共和制"], "a": "A"}, {"id": 96, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义革命的主力军是农民，其中是无产阶级最可靠的同盟军的是（  ）。", "options": ["自耕农", "富农", "贫雇农", "中农"], "a": "C"}, {"id": 97, "type": "single", "category": "二、新民主主义革命理论", "q": "近代中国所遭受的最大的压迫是来自（  ）的民族压迫。", "options": ["封建主义", "帝国主义", "官僚资本主义", "军阀"], "a": "B"}, {"id": 98, "type": "single", "category": "二、新民主主义革命理论", "q": "工人阶级只有与（  ）结成巩固的联盟，才能形成强大的力量，才能完成反帝反封建的革命任务。", "options": ["手工业者", "小资产阶级", "商人", "农民阶级"], "a": "D"}, {"id": 99, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级及其政党实现对各革命阶级的领导，必须建立以（  ）为基础的广泛的统一战线，这是实现领导权的关键。", "options": ["工商联盟", "工农联盟", "农商联盟", "工业与手工业联盟"], "a": "B"}, {"id": 100, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级在同资产阶级建立统一战线时，必须坚持（  ）原则，保持党在思想上、政治上和组织上的独立性，实行又联合又斗争的方针，这是坚持领导权的基本策略。", "options": ["独立自主", "以我为主", "为我所用", "独立自强"], "a": "A"}, {"id": 101, "type": "single", "category": "二、新民主主义革命理论", "q": "加强（  ）政党的建设，实现无产阶级在民主革命中的领导权的根本保证。", "options": ["无产阶级", "农民阶级", "工人阶级", "资产阶级"], "a": "A"}, {"id": 102, "type": "single", "category": "二、新民主主义革命理论", "q": "第一次完整地提出新民主主义政治、经济、文化纲领的著作是（  ）。", "options": ["《论联合政府》", "《在晋绥干部会议上的讲话》", "《新民主主义论》", "《<共产党人>发刊词》"], "a": "C"}, {"id": 103, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义经济纲领中极具特色的一项内容是（  ）。", "options": ["没收封建地主阶级的土地归农民所有", "没收官僚资本归国家所有", "消灭资本主义", "保护民族工商业"], "a": "D"}, {"id": 104, "type": "single", "category": "二、新民主主义革命理论", "q": "1945年，毛泽东在党的七大所作的（  ）的政治报告中，进一步把新民主主义的政治、经济、文化与党的基本纲领结合起来，进行了具体的阐述。", "options": ["《论联合政府》", "《新民主主义论》", "《<共产党人>发刊词》", "《在晋绥干部会议上的讲话》"], "a": "A"}, {"id": 105, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义革命的政治纲领是：推翻帝国主义和封建主义的统治，建立一个无产阶级领导的、（  ）、各革命阶级联合专政的新民主主义的共和国。", "options": ["以民族资产阶级为基础的", "以工农联盟为基础的", "以工商联盟为基础的", "以工人阶级为基础的"], "a": "B"}, {"id": 106, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义国家制度的核心内容和基本准则是（  ）。", "options": ["各革命阶级联合专政", "工农联盟", "工商联盟", "人民当家作主"], "a": "D"}, {"id": 107, "type": "single", "category": "二、新民主主义革命理论", "q": "作为新民主主义革命的三大经济纲领之一，没收官僚资本具有（  ）。", "options": ["社会主义性质", "民主革命性质", "新民主主义革命和社会主义革命的双重性质", "新民主主义革命性质"], "a": "C"}, {"id": 108, "type": "single", "category": "二、新民主主义革命理论", "q": "土地革命战争时期，革命的主要对象是（  ）。", "options": ["北洋军阀", "国民党新军阀", "日本帝国主义", "民族资产阶级"], "a": "B"}, {"id": 109, "type": "single", "category": "二、新民主主义革命理论", "q": "中国革命的基本问题是（  ）。", "options": ["分清敌友问题", "革命领导权问题", "农民问题", "革命对象问题"], "a": "C"}, {"id": 110, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义文化就其内容说是反对帝国主义压迫，主张中华民族的尊严和独立；就其形式说是具有鲜明的民族风格、民族形式和民族特色，要有中国作风和中国气派。这体现了新民主主义文化的（  ）。", "options": ["民族性", "科学性", "革命性", "合理性"], "a": "A"}, {"id": 111, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义理论达到成熟的历史时期是（ ）。", "options": ["国民革命时期", "土地革命时期", "抗日战争时期", "解放战争时期"], "a": "C"}, {"id": 112, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义国家的国体是（ ）。", "options": ["遵循民主集中制原则的人民代表大会制度", "无产阶级领导的工农联盟为基础的各革命阶级联合专政的民主共和国", "无产阶级专政的社会主义共和国", "工人、农民、城市小资产阶级和民族资产阶级联合统治的人民共和国"], "a": "B"}, {"id": 113, "type": "single", "category": "二、新民主主义革命理论", "q": "中国资产阶级分为两个部分，他们是（ ）。", "options": ["民族资产阶级和官僚资产阶级", "官僚资产阶级和买办资产阶级", "小资产阶级和民族资产阶级", "民族资产阶级和农村富农"], "a": "A"}, {"id": 114, "type": "single", "category": "二、新民主主义革命理论", "q": "中国革命的特点和优点之一是武装的革命反对武装的反革命，这是因为（ ）。", "options": ["中国是半殖民地半封建社会，内部没有民主制度，外部没有民族独立", "中国的民主革命实质是农民革命和农民战争，农民是革命的主力军", "中国革命的敌人在城市是强大的，而在广大的农村比较薄弱", "中国经济以地方性农业经济为主，便于在农村实行“工农武装割据”"], "a": "A"}, {"id": 115, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级革命取得胜利的根本保证是（ ）。", "options": ["无产阶级政党的正确领导", "建立革命的统一战线", "人民群众革命积极性的极大提高", "非常成熟的革命形势"], "a": "A"}, {"id": 116, "type": "single", "category": "二、新民主主义革命理论", "q": "实现无产阶级领导权的关键是建立（ ）。", "options": ["无产阶级的天然领导地位", "武装斗争", "统一战线", "农村革命根据地"], "a": "C"}, {"id": 117, "type": "single", "category": "二、新民主主义革命理论", "q": "新民主主义文化与旧民主主义文化相区别的根本特点是（ ）。", "options": ["是否反帝反封建", "是否以共产主义为指导", "是否站在工农兵的立场上", "是否提倡科学、民主"], "a": "B"}, {"id": 118, "type": "single", "category": "二、新民主主义革命理论", "q": "毛泽东阐述中国共产党关于建立新中国的政治主张，为新中国的建立做了理论和政策准备的著作是（ ）。", "options": ["《 新民主主义论》", "《 中国革命和中国共产党》", "《 论人民民主专政》", "《 关于正确处理人民内部矛盾的问题》"], "a": "C"}, {"id": 119, "type": "single", "category": "二、新民主主义革命理论", "q": "近代中国最进步的阶级是（ ）。", "options": ["买办阶级", "资产阶级", "农民阶级", "无产阶级"], "a": "D"}, {"id": 120, "type": "single", "category": "二、新民主主义革命理论", "q": "区分中国新、旧民主革命的主要标志是（ ）。", "options": ["时代条件不同", "指导思想不同", "领导阶级不同", "革命前途不同"], "a": "C"}, {"id": 121, "type": "single", "category": "二、新民主主义革命理论", "q": "无产阶级领导的1921 -1949年的人民革命在性质上属于（ ）。", "options": ["资产阶级民主革命", "社会主义民主革命", "新民主主义革命", "共产主义革命"], "a": "C"}, {"id": 122, "type": "single", "category": "二、新民主主义革命理论", "q": "中国新民主主义革命的性质之所以是资产阶级民主革命，原因在于（ )。", "options": ["资产阶级是中国革命的动力之一", "革命的任务是反对帝国主义、封建主义，而不是一般地反对资本主义", "革命的领导权仍然掌握在资产阶级手里", "革命的指导思想是资产阶级民主主义而不是马克思主义"], "a": "B"}, {"id": 123, "type": "single", "category": "二、新民主主义革命理论", "q": "近代中国的（ ），决定了中国革命是资产阶级民主革命。", "options": ["社会性质和主要矛盾", "革命性质和革命任务", "领导阶级和革命力量", "革命前途和革命手段"], "a": "A"}, {"id": 124, "type": "single", "category": "二、新民主主义革命理论", "q": "毛泽东在《新民主主义论》 中提出的新民主主义国家的政体是（ ）。", "options": ["工农兵代表大会制", "人民代表大会制", "参议会制", "各界人民代表会议制"], "a": "B"}, {"id": 125, "type": "single", "category": "三、社会主义改造理论", "q": "在中国革命进程中，具有新民主主义革命和社会主义革命双重性质的事件是（ ）。", "options": ["没收封建阶级的土地归农民所有", "没收官僚资本归新民主主义国家所有", "接收帝国主义在华企业归新民主主义国家所有", "赎买民族工商业归人民民主专政国家所有"], "a": "B"}, {"id": 126, "type": "single", "category": "三、社会主义改造理论", "q": "1956年底，三大改造的基本完成，标志着社会主义制度在我国（  ）。", "options": ["初步确立", "基本建成", "基本完善", "完全建成"], "a": "A"}, {"id": 127, "type": "single", "category": "三、社会主义改造理论", "q": "剥削阶级在我国被消灭的标志是（  ）。", "options": ["中华人民共和国建立", "全国大陆的解放与统一", "对农业、手工业和资本主义工商业的社会主义改造的基本完成", "土地改革的完成"], "a": "C"}, {"id": 128, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义制度在中国确立的主要标志是（  ）。", "options": ["中华人民共和国的成立", "国民经济的恢复与调整", "《中华人民共和国宪法》的颁布", "社会主义改造的基本完成"], "a": "D"}, {"id": 129, "type": "single", "category": "三、社会主义改造理论", "q": "我国进入社会主义初级阶段的起点是（  ）。", "options": ["中华人民共和国的成立", "国民经济恢复任务的完成", "社会主义改造基本完成", "中共十三大的召开"], "a": "C"}, {"id": 130, "type": "single", "category": "三、社会主义改造理论", "q": "三大改造基本完成的时间是（  ）年底。", "options": ["1956", "1955", "1953", "1978"], "a": "A"}, {"id": 131, "type": "single", "category": "三、社会主义改造理论", "q": "我国社会主义改造基本完成后，其所有制结构呈现的状况是（  ）。", "options": ["完全的公有制", "国营经济为主导，多种经济形式并存", "以公有制为基础的社会主义基本经济制度", "社会主义公有制为主体，多种经济形式共同发展"], "a": "C"}, {"id": 132, "type": "single", "category": "三、社会主义改造理论", "q": "下面关于社会主义改造的不正确的论述有（  ）。", "options": ["社会主义改造的基本完成标志着社会主义", "社会主义改造的基本完成实现了中国历史上最伟大最深刻的社会变革", "社会主义改造的基本完成为中国的社会主义现代化建设奠定了基础", "社会主义改造的基本完成标志中国已经建成了社会主义"], "a": "D"}, {"id": 133, "type": "single", "category": "三、社会主义改造理论", "q": "劳动人民真正成为国家的主人是在（  ）。", "options": ["社会主义基本制度确立后", "中华人民共和国成立后 ", "改革开放后", "共产主义实现后"], "a": "A"}, {"id": 134, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义的基本（  ）制度建立起来，是中国进入社会主义社会的最主要标志。。", "options": ["经济", "政治", "文化", "政党"], "a": "A"}, {"id": 135, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义制度的确立是中国历史上最深刻最伟大的社会变革，为当代中国一切发展进步奠定了（  ）。", "options": ["经济基础", "思想基础", "文化基础", "制度基础"], "a": "D"}, {"id": 136, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义改造的完成具有深刻的历史意义，因为它基本解决了（  ）。", "options": ["无产阶级和资产阶级的矛盾", "帝国主义和中华民族的矛盾", "封建主义和人民大众的矛盾", "官僚资产阶级和民族资产阶级的矛盾"], "a": "A"}, {"id": 137, "type": "single", "category": "三、社会主义改造理论", "q": "下列关于社会主义改造理解错误的是（  ）。", "options": ["1956年底完成的", "与社会主义改革是一回事", "解决了走社会主义道路还是资本主义道路的问题", "解决了无产阶级和资产阶级的矛盾"], "a": "B"}, {"id": 138, "type": "single", "category": "三、社会主义改造理论", "q": "中国共产党对农业进行社会主义改造的方针是（  ）。", "options": ["积极领导，稳步前进", "趁热打铁，积极领导", "自愿互利，国家帮助", "国家帮助，典型示范"], "a": "A"}, {"id": 139, "type": "single", "category": "三、社会主义改造理论", "q": "中国共产党对官僚资本和民族资本采取的政策分别是（  ）。", "options": ["没收、和平赎买", "没收、没收", "和平赎买、没收", "和平赎买、和平赎买"], "a": "A"}, {"id": 140, "type": "single", "category": "三、社会主义改造理论", "q": "在对资本主义工商业的改造中，国家向私营企业投资入股，企业生产资料由国家和资本家共同所有，利润分配仍然实行“四马分肥”，国家向企业派出公方代表，与工人、资本家共同管理和改造企业，公方代表居领导地位。这时的企业性质（  ）。", "options": ["仍然属于私营企业", "属于半社会主义性质", "具有了社会主义因素", "基本上属于社会主义国营性质"], "a": "B"}, {"id": 141, "type": "single", "category": "三、社会主义改造理论", "q": "在对农业进行社会主义改造时建立的初级农业生产合作社属于（  ）。", "options": ["新民主主义性质", "半社会主义性质", "社会主义萌芽性质", "社会主义性质"], "a": "B"}, {"id": 142, "type": "single", "category": "三、社会主义改造理论", "q": "对资本主义工商业进行社会主义改造的方法是（  ）。", "options": ["和平赎买", "国家资本主义", "合作化", "改造企业和改造人相结合"], "a": "A"}, {"id": 143, "type": "single", "category": "三、社会主义改造理论", "q": "我国农业合作化采取了循序渐进的步骤是（  ）。", "options": ["由互助组到高级社再到集体化", "由互助组到初级社再到高级社", "由初级社到互助组再到高级社", "个体小农到互助组再到高级社"], "a": "B"}, {"id": 144, "type": "single", "category": "三、社会主义改造理论", "q": "中国民族资产阶级在社会主义改造时期仍有两面性，其表现为（  ）。", "options": ["革命性和妥协性", "主动性和被动性", "剥削工人的一面和接受改造的一面", "进步性和顽固性"], "a": "C"}, {"id": 145, "type": "single", "category": "三、社会主义改造理论", "q": "党在农业社会主义改造中对待富农的政策是（  ）。", "options": ["征收富农的多余土地财产", "由逐步限制到最后消灭富农经济", "消灭富农经济", "限制富农经济"], "a": "B"}, {"id": 146, "type": "single", "category": "三、社会主义改造理论", "q": "我国对个体手工业进行社会主义改造的主要方式是（  ）。", "options": ["赎买", "统购统销", "公私合营", "合作化"], "a": "D"}, {"id": 147, "type": "single", "category": "三、社会主义改造理论", "q": "国家对资本主义工商业的社会主义改造经历了三个步骤，第一步采取的措施是（  ）。", "options": ["委托加工、计划订购、统购包销", "国家向私营企业投资入股，企业生产资料由国家和资本家共同所有", "国家派干部进入企业，同工人、资本家共同管理和改造企业", "实行个别企业的公私合营"], "a": "A"}, {"id": 148, "type": "single", "category": "三、社会主义改造理论", "q": "在对资本主义工商业的改造中，国家对私营工商业实行委托加工、计划订货、统购包销、代销等形式，使其生产、经营开始纳入国家计划的轨道。利润分配上实行“四马分肥”政策，工人在企业中的地位也发生改变。这使得企业（  ）。", "options": ["有所变化，但还是私营企业", "具有了社会主义的因素", "具有完全社会主义的性质", "基本上成为社会主义国营性质的企业"], "a": "A"}, {"id": 149, "type": "single", "category": "三、社会主义改造理论", "q": "国家在公私合营后对合营企业进行清产核资，定股定息，委派人员负责企业的生产管理，同时按企业资本的股份额给原工商业者定息。这时的企业性质属于（  ）。", "options": ["私营企业性质", "具有社会主义的因素", "半社会主义性质", "基本上成为社会主义国营性质"], "a": "B"}, {"id": 150, "type": "single", "category": "三、社会主义改造理论", "q": "国家对资本主义工商业的社会主义改造完成的标志是（  ）。", "options": ["个别企业的公私合营", "实行初级形式的国家资本主义", "把私营工商业的生产经营纳入国家计划的轨道", "全行业的公私合营"], "a": "D"}, {"id": 151, "type": "single", "category": "三、社会主义改造理论", "q": "国家在对资本主义工商业进行社会主义改造的过程中，在利润分配上采取的政策是（  ）。", "options": ["统筹兼顾", "劳资两利", "公私兼顾", "四马分肥"], "a": "D"}, {"id": 152, "type": "single", "category": "三、社会主义改造理论", "q": "对农业的社会主义改造中建立的高级农业合作社属于（  ）。", "options": ["新民主主义性质", "社会主义萌芽性质", "半社会主义性质", "完全的社会主义性质"], "a": "D"}, {"id": 153, "type": "single", "category": "三、社会主义改造理论", "q": "下列不属于在中国进行社会主义改造的目的的是（  ）。", "options": ["消灭资本家和富农分子", "确立社会主义生产关系", "健全社会主义上层建筑", "继续解放和发展生产力"], "a": "A"}, {"id": 154, "type": "single", "category": "三、社会主义改造理论", "q": "我国社会主义改造中的创举是（  ）。", "options": ["对资本主义工商业实行和平赎买政策", "农业合作化", "建立手工业合作社", "没收官僚资本"], "a": "A"}, {"id": 155, "type": "single", "category": "三、社会主义改造理论", "q": "国家资本主义有初级形式和高级形式之分，初级形式的国家资本主义是（  ）。", "options": ["个别企业的公私合营和全行业公私合营", "供销小组、供销合作社和生产合作社", "国家对私营工商业实行委托加工、计划订货、统购包销、经销代销等", "互助组、初级社、高级社"], "a": "C"}, {"id": 156, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会属于（  ）。", "options": ["资本主义体系", "社会主义体系", "封建主义体系", "前资本主义体系"], "a": "B"}, {"id": 157, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会存在着多种经济成分，其中（  ）是个体经济向社会主义集体经济过渡的形式。", "options": ["国营经济", "合作社经济", "私人资本主义经济", "国家资本主义经济"], "a": "B"}, {"id": 158, "type": "single", "category": "三、社会主义改造理论", "q": "下列不属于中华人民共和国成立后党提出过渡时期总路线历史条件的是（  ）。", "options": ["完成了民主革命遗留的历史任务", "巩固了人民民主专政", "完成了发展国民经济的第一个五年计划", "恢复了国民经济"], "a": "C"}, {"id": 159, "type": "single", "category": "三、社会主义改造理论", "q": "中国共产党提出新民主主义社会和平过渡到社会主义社会的最初设想是在（  ）。", "options": ["中华人民共和国成立后", "民主革命时期", "社会主义改造基本完成后", "“文化大革命”时期"], "a": "B"}, {"id": 160, "type": "single", "category": "三、社会主义改造理论", "q": "1953年，毛泽东和中共中央提出了从新民主主义社会向社会主义社会转变的（  ）。", "options": ["土地革命的总路线", "社会主义建设的总路线", "社会主义初级阶段的基本路线", "过渡时期的总路线"], "a": "D"}, {"id": 161, "type": "single", "category": "三、社会主义改造理论", "q": "党在过渡时期总路线的提出者是（  ）。", "options": ["刘少奇", "周恩来", "邓小平", "毛泽东"], "a": "D"}, {"id": 162, "type": "single", "category": "三、社会主义改造理论", "q": "党在过渡时期的总路线、总任务是（  ）。", "options": ["无产阶级领导的，人民大众的，反对帝国主义、封建主义、官僚资本主义的革命", "在一个相当长的时期内，逐步实现国家的社会主义工业化，并逐步实现国家对农业、手工业和资本主义工商业的社会主义改造", "鼓足干劲，力争上游，多快好省建设社会主义", "以经济建设为中心，坚持四项基本原则，坚持改革开放，自力更生，艰苦创业，为把我国建设成为富强、民主、文明的社会主义现代化国家而奋斗"], "a": "B"}, {"id": 163, "type": "single", "category": "三、社会主义改造理论", "q": "在中华人民共和国成立之初，我国处在过渡时期，社会性质是（  ）。 ", "options": ["新民主主义", "社会主义", "共产主义", "资本主义"], "a": "A"}, {"id": 164, "type": "single", "category": "三、社会主义改造理论", "q": "1953年到1956年中国国内的主要矛盾是（  ）。", "options": ["人民大众同帝国主义、封建主义及其国民党残余势力的矛盾", "社会主义道路和资本主义道路、工人阶级和资产阶级的矛盾", "人民日益增长的物质文化需要同落后的社会生产之间的矛盾", "帝国主义和中华民族的矛盾、封建主义和人民大众的矛盾"], "a": "B"}, {"id": 165, "type": "single", "category": "三、社会主义改造理论", "q": "下列对新民主主义社会的说法，准确的是（  ）。", "options": ["是共产主义社会的准备阶段", "是一个独立的社会形态", "前途是资本主义", "是由新民主主义向社会主义转变的过渡时期"], "a": "D"}, {"id": 166, "type": "single", "category": "三、社会主义改造理论", "q": "党在过渡时期总路线的主体是（  ）。", "options": ["实现社会主义工业化", "对农业的社会主义改造", "对资本主义工商业的社会主义改造", "对手工业的社会主义改造"], "a": "A"}, {"id": 167, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义革命在全国胜利及土地革命在全国完成后，国内的主要矛盾是（  ）。", "options": ["帝国主义与中华民族的矛盾", "封建主义与人民大众的矛盾", "工人阶级与资产阶级的矛盾", "农民阶级与地主阶级的矛盾"], "a": "C"}, {"id": 168, "type": "single", "category": "三、社会主义改造理论", "q": "1949年中华人民共和国的建立，标志着中国从半殖民地半封建社会进入了（  ）。", "options": ["社会主义社会", "资本主义社会", "新民主主义社会", "共产主义社会"], "a": "C"}, {"id": 169, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会存在着多种经济成分，其中（  ）是私人资本主义经济向社会主义国营经济过渡", "options": ["合作社经济", "国家资本主义经济", "自给自足的自然经济", "个体经济"], "a": "B"}, {"id": 170, "type": "single", "category": "三、社会主义改造理论", "q": "过渡时期的总路线被概括为“一化三改”，“一化”的含义是指（  ）。", "options": ["私营企业的国有化", "农业的集体化", "手工业的合作化", "社会主义的工业化"], "a": "D"}, {"id": 171, "type": "single", "category": "三、社会主义改造理论", "q": "提出使中国稳步地由农业国转变为工业国，由新民主主义国家转变为社会主义国家，是在（  ）。", "options": ["党的七大", "党的七届二中全会", "党的七届三中全会", "党的八大"], "a": "B"}, {"id": 172, "type": "single", "category": "三、社会主义改造理论", "q": "我国过渡时期的含义是指（  ）。", "options": ["从半殖民地半封建社会到新民主主义社会的革命转变期", "从半殖民地半封建社会到社会主义社会的革命转变期", "从新民主主义社会到共产主义的革命转变期", "从新民主主义社会到社会主义社会的革命转变期"], "a": "D"}, {"id": 173, "type": "single", "category": "三、社会主义改造理论", "q": "通过没收官僚资本，中华人民共和国建立了社会主义性质的（  ）。", "options": ["集体经济", "国营经济", "混合经济", "国家资本主义经济"], "a": "B"}, {"id": 174, "type": "single", "category": "三、社会主义改造理论", "q": "马克思、恩格斯曾设想用暴力没收与和平赎买这两种方式来变革所有制问题，认为如果能用（  ）的办法变革所有制，将是最“便宜”不过的了。", "options": ["没收", "征收", "赎买", "合营"], "a": "C"}, {"id": 175, "type": "single", "category": "三、社会主义改造理论", "q": "党的过渡时期总路线所指的过渡时期是（  ）。", "options": ["从中华人民共和国成立到国民经济恢复", "从国民经济恢复到社会主义改造基本完成", "从中华人民共和国成立到社会主义改造基本完成", "从中华人民共和国成立到党的十一届三中全会召开"], "a": "C"}, {"id": 176, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会存在着多种经济成分，其中属于半社会主义性质的是（  ）。", "options": ["国营经济", "个体经济", "国家资本主义", "合作社经济"], "a": "D"}, {"id": 177, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义改造的行动指南为（  ）。", "options": ["列宁的合作社理论", "马克思的赎买理论", "列宁的国家资本主义理论", "党在过渡时期的总路线"], "a": "D"}, {"id": 178, "type": "single", "category": "三、社会主义改造理论", "q": "下列几组词，最能准确反映“过渡时期”这一特殊年代的是（  ）。", "options": ["工业化 抗美援朝 三大改造", "一边倒 人民公社 另起炉灶", "合作化 求同存异 三个面向", "中国梦 精准扶贫 从严治党"], "a": "A"}, {"id": 179, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会中的社会主义因素不包括（  ）。", "options": ["国营经济", "民族资产阶级参加政权", "思想文化领域中马克思主义的指导地位", "中国共产党的政治领导"], "a": "B"}, {"id": 180, "type": "single", "category": "三、社会主义改造理论", "q": "从（   ）到社会主义改造基本完成，是我国从新民主主义到社会主义的过渡时期。", "options": ["五四运动", "辛亥革命", "中华人民共和国成立", "新民主主义革命"], "a": "C"}, {"id": 181, "type": "single", "category": "三、社会主义改造理论", "q": "新民主主义社会存在着多种经济成分，其中属于完全的社会主义性质的是（  ）。", "options": ["合作社经济", "个体经济", "国营经济", "国家资本主义经济"], "a": "C"}, {"id": 182, "type": "single", "category": "三、社会主义改造理论", "q": "中国社会主义改造和社会主义建设道路中一个十分突出的特殊性问题是（  ）。", "options": ["一个落后的农业国的工业化问题", "农业的社会主义改造问题", "农业的机械化问题", "民族资本主义工商业的社会主义改造问题"], "a": "A"}, {"id": 183, "type": "single", "category": "三、社会主义改造理论", "q": "我国社会主义改造的基本完成，社会主义制度的初步确立，标志着我国（  ）。", "options": ["进入社会主义社会高级阶段", "进入社会主义社会", "由新民主主义开始向社会主义社会过渡", "社会主义已经建成"], "a": "B"}, {"id": 184, "type": "single", "category": "三、社会主义改造理论", "q": "提出“工人革命的第一步就是使无产阶级上升为统治阶级，争得民主”的是（  ）。", "options": ["毛泽东", "邓小平", "列宁", "马克思恩格斯"], "a": "D"}, {"id": 185, "type": "single", "category": "三、社会主义改造理论", "q": "社会主义改造的实质是（  ）。", "options": ["消灭生产资料私有制", "消灭生活资料私有制", "消灭资本主义经济", "消灭个体经济"], "a": "A"}, {"id": 186, "type": "single", "category": "三、社会主义改造理论", "q": "关于社会主义过渡时期总路线错误的说法是（  ）。", "options": ["主要内容是“一化三改”", "过渡时期结束的标志是社会主义改造结束", "以单一的社会主义公有制和计划经济体制为目标", "以发达的社会主义为目标"], "a": "D"}, {"id": 187, "type": "single", "category": "三、社会主义改造理论", "q": "毛泽东在中华人民共和国成立后，对新民主主义理论的一个重大贡献和发展是（  ）。", "options": ["提出了新民主主义革命理论", "提出了从新民主主义到社会主义过渡的理论", "提出了社会主义初级阶段理论", "出了人民民主专政理论"], "a": "B"}, {"id": 188, "type": "single", "category": "三、社会主义改造理论", "q": "党在过渡时期总路线中，实现工业化是主体，两翼是（  ）。", "options": ["对农业、手工业和资本主义工商业的社会主义改造", "正确处理农轻重关系", "正确处理国家、集体、个人三者关系", "正确处理工业化和三大改造关系"], "a": "A"}, {"id": 189, "type": "single", "category": "三、社会主义改造理论", "q": "关于我国进行社会主义改造的目的错误的说法是（  ）。", "options": ["消灭资本家", "确立社会主义生产关系", "健全社会主义上层建筑", "继续解放和发展生产力"], "a": "A"}, {"id": 190, "type": "single", "category": "四、建设道路初步探索", "q": "新中国成立后第一次明确规定中华人民共和国的国家政权属于人民，人民行使国家政权的机关为各级人民代表大会和各级人民政府的重要文献是（  ）。", "options": ["1954年《中华人民共和国宪法》", "《共同纲领》", "《论十大关系》", "《关于正确处理人民内部矛盾的问题》"], "a": "B"}, {"id": 191, "type": "single", "category": "四、建设道路初步探索", "q": "中共“八大”提出的我国经济建设方针是（  ）。", "options": ["大干快上，赶美超英", "力争高速度，快压倒一切", "慢一点，稳一点", "既反保守又反冒进，在综合平衡中稳步前进"], "a": "D"}, {"id": 192, "type": "single", "category": "四、建设道路初步探索", "q": "在中共“八大”上，提出社会主义经济体制应实行“三个主体，三个补充”重要设想的是（  ）。", "options": ["周恩来", "陈云", "刘少奇", "毛泽东"], "a": "B"}, {"id": 193, "type": "single", "category": "四、建设道路初步探索", "q": "20世纪50年代中期，中共中央领导集体开展了一次广泛而深入地对经济工作的调查研究，其理论成果是（  ）。", "options": ["《关于正确处理人民内部矛盾的问题》的形成", "《论十大关系》的形成", "中共八大政治报告的形成", "“双百”方针的形成"], "a": "B"}, {"id": 194, "type": "single", "category": "四、建设道路初步探索", "q": "新中国工业化是在苏联影响下起步的，走中国工业化道路，是中国共产党初步探索我国社会主义建设道路的一个重要思想，当时所讲工业化道路问题，主要指(  ）。", "options": ["经济建设和国防建设关系问题", "中央和地方关系问题", "重工业、轻工业和农业的发展关系问题", "沿海工业和内地工业的关系问题"], "a": "C"}, {"id": 195, "type": "single", "category": "四、建设道路初步探索", "q": "在社会主义制度确立后，（  ）是对抗性矛盾。", "options": ["劳动人民同民族资产阶级之间的矛盾", "工人、农民同知识分子之间的矛盾", "政府同人民群众之间的矛盾", "人民同国民党遗留大陆的特务组织之间的矛盾"], "a": "D"}, {"id": 196, "type": "single", "category": "四、建设道路初步探索", "q": "中国共产党在实践中开始探索符合中国国情的社会主义建设道路的标志是（  ）。", "options": ["中共八大召开", "毛泽东发表《论十大关系》", "毛泽东发表《关于正确处理人民内部矛盾的问题》", "中共中央提出社会主义建设总路线"], "a": "B"}, {"id": 197, "type": "single", "category": "四、建设道路初步探索", "q": "《论十大关系》是毛泽东探索中国社会主义建设道路的开山之作，其基本方针是（  ）。", "options": ["把国内外一切积极因素调动起来，为建设社会主义事业服务", "正确处理人民内部矛盾和敌我矛盾", "加强全党和全国人民的团结", "探索适合我国国情的社会主义建设道路"], "a": "A"}, {"id": 198, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东在《论十大关系》中阐述的首要的经济关系是（  ）。", "options": ["国防建设和经济建设的关系", "中央与地方的关系", "沿海工业和内地工业的关系", "农业、重工业和轻工业的关系"], "a": "D"}, {"id": 199, "type": "single", "category": "四、建设道路初步探索", "q": "社会主义改造基本完成后，国家政治生活的主题是（  ）。", "options": ["探索本国建设社会主义的道路", "不断解决仍然存在的敌我矛盾，同时正确处理人民内部矛盾", "正确处理人民内部矛盾", "集中力量解决人民对于建立先进的工业国的要求同落后的农业国现实之间的矛盾"], "a": "C"}, {"id": 200, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东第一次系统地阐述社会主义社会矛盾问题的著作是（  ）。", "options": ["《论十大关系》", "《关于正确处理人民内部矛盾的问题》", "《矛盾论》", "《论人民民主专政》"], "a": "B"}, {"id": 201, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东首次明确地把农业、轻工业、重工业三者的关系提到工业化道路的高度加以考查的报告是（  ）。", "options": ["《论十大关系》", "《关于正确处理人民内部矛盾的问题》", "《为争取国家财政经济状况基本好转而斗争》", "1961年《在扩大的中央工作会议上的讲话》"], "a": "B"}, {"id": 202, "type": "single", "category": "四、建设道路初步探索", "q": "20世纪60年代提出实行“两种教育制度，两种劳动制度”主张的是（  ）。", "options": ["毛泽东", "周恩来", "刘少奇", "邓小平"], "a": "C"}, {"id": 203, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东发表的《论十大关系》成为探索中国特色的社会主义建设道路的先声，文章中提出我国社会主义建设必须围绕着一个基本方针，就是（  ）。", "options": ["正确区分和处理两类不同性质的矛盾", "调动国内外一切积极因素，把中国建设成为社会主义强国", "中国共产党和民主党派“长期共存、互相监督”", "“调整、巩固、充实、提高”的方针"], "a": "B"}, {"id": 204, "type": "single", "category": "四、建设道路初步探索", "q": "在1956年知识分子问题会议上，周恩来对知识分子的阶级属性的表达是（  ）。", "options": ["小资产阶级", "民族资产阶级", "知识分子的绝大部分己经是工人阶级的一部分", "大资产阶级"], "a": "C"}, {"id": 205, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东认为，社会主义社会基本矛盾具有“又相适应又相矛盾”的特点，其中，之所以会有相矛盾的一面，是因为（  ）。", "options": ["社会主义生产力发展水平不高", "社会主义建设者经验积累不足", "社会主义国家发展程度不够", "社会主义生产关系不完善"], "a": "D"}, {"id": 206, "type": "single", "category": "四、建设道路初步探索", "q": "新中国成立后，工人阶级与民族资产阶级之间的矛盾属于（  ）。", "options": ["敌我矛盾", "阶级矛盾", "人民内部矛盾", "对抗性矛盾"], "a": "C"}, {"id": 207, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东指出，在解决人民内部矛盾时，一个总的方针是（  ）。", "options": ["用民主的方式解决", "用谈判的方式解决", "用暴力的方式解决", "用革命的方式解决"], "a": "A"}, {"id": 208, "type": "single", "category": "四、建设道路初步探索", "q": "在经济建设中，毛泽东反复强调的方针是（  ）。", "options": ["快速发展", "稳步增长", "统筹兼顾", "效率为主"], "a": "C"}, {"id": 209, "type": "single", "category": "四、建设道路初步探索", "q": "无产阶级政党的根本组织原则与指导党内生活的基本准则是（  ）。", "options": ["群众路线", "民主集中制", "集体领导制度", "理论学习"], "a": "B"}, {"id": 210, "type": "single", "category": "四、建设道路初步探索", "q": "1956年全国高考的作文试题是：“我生活在幸福的年代”。下列事件不可能发生在这个幸福年代里的是（  ）。", "options": ["改革开放", "社会主义改造的完成", "社会主义制度基本确立", "一五计划即将完成"], "a": "A"}, {"id": 211, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东在《论十大关系》一文中指出的正确处理国家、集体、个人三者关系应是(  ）。", "options": ["个人利益是绝对第一位的", "集体利益是绝对第一位的", "兼顾三者的利益", "只要国家利益实现了，个人利益自然而然得到满足"], "a": "C"}, {"id": 212, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东在《关于正确处理人民内部矛盾的问题》中提出解决社会主义社会基本矛盾的途径是(  ）。", "options": ["进行新民主主义革命", "进行社会主义革命", "进行无产阶级专政下的继续革命", "依靠社会主义制度本身的力量"], "a": "D"}, {"id": 213, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东提出关于发展国民经济的总方针，以下不正确的是(  ）。", "options": ["以工业为主导", "以农轻重为序", "以就业为导向", "以农业为基础"], "a": "C"}, {"id": 214, "type": "single", "category": "四、建设道路初步探索", "q": "党的八大正确分析了社会主义改造完成后我国社会主要矛盾的变化，指出（  ）制度在我国已经基本建立起来了。", "options": ["资本主义", "官僚主义", "社会主义", "新民主主义"], "a": "C"}, {"id": 215, "type": "single", "category": "四、建设道路初步探索", "q": "新中国成立初期，我国主要是学习(  ）。", "options": ["日本经验", "德国经验", "新加坡经验", "苏联经验"], "a": "D"}, {"id": 216, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东的“两参一改三结合”不包括的人员有(  ）。", "options": ["工人群众", "领导干部", "技术人员", "农民"], "a": "D"}, {"id": 217, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东提出的“两参一改三结合”不包括(  ）。", "options": ["工人参加管理", "改革不合理的规章制度", "干部不参加劳动", "工人群众、领导干部和技术人员三结合"], "a": "C"}, {"id": 218, "type": "single", "category": "四、建设道路初步探索", "q": "刘少奇提出的“两种劳动制度、两种教育制度”不包括(  ）。", "options": ["全日制的劳动制度", "全日制的教育制度", "半日制的劳动制度", "星期制的劳动制度"], "a": "D"}, {"id": 219, "type": "single", "category": "四、建设道路初步探索", "q": "在全党和全国工作重心由革命转向建设的时候，面临着一个（  ）问题。", "options": ["怎样建设社会主义", "如何认识和处理社会主义社会矛盾", "建设一个什么样的党，怎样建设党", "是否要走中国工业化道路"], "a": "B"}, {"id": 220, "type": "single", "category": "四、建设道路初步探索", "q": "由于社会主义社会基本矛盾是（  ）性质的，所以“它可以经过社会主义制度本身，不断地得到解决”。", "options": ["普遍", "发展", "对抗", "非对抗"], "a": "D"}, {"id": 221, "type": "single", "category": "四、建设道路初步探索", "q": "毛泽东在《关于正确处理人民内部矛盾的问题》中针对科学文化领域的矛盾提出了（  ）方针。", "options": ["自由讨论", "科学实践", "艺术实践", "百花齐放、百家争鸣"], "a": "D"}, {"id": 222, "type": "single", "category": "四、建设道路初步探索", "q": "（  ）是无产阶级政党的根本组织原则，是指导党内生活的基本准则。", "options": ["集体领导制度", "法制", "民主集中制", "批评与自我批评"], "a": "C"}, {"id": 223, "type": "single", "category": "四、建设道路初步探索", "q": "社会主义改造任务基本完成后，全国人民的主要任务是（  ）。", "options": ["进行思想战线上的社会主义革命", "坚持无产阶级专政下继续革命", "开展社会主义道路与资本主义道路的决战", "集中力量发展社会生产力"], "a": "D"}, {"id": 224, "type": "single", "category": "五、邓小平理论", "q": "1958年10月，山东范县县委书记作报告：“人民进入新乐园，吃穿喝用不要钱，人民都说天堂好，天堂不如新乐园。”这一现象产生的影响是（  ）。", "options": ["提高了生产力", "调动了农民的积极性", "出现了农村城镇化趋势", "破坏了农村生产力"], "a": "D"}, {"id": 225, "type": "single", "category": "五、邓小平理论", "q": "社会主义首先要解决的问题是（  ）", "options": ["生产资料公有制", "生产力发展", "人民公社", "民主"], "a": "B"}, {"id": 226, "type": "single", "category": "五、邓小平理论", "q": "社会主义本质理论揭示了社会主义的根本任务是（  ），这合乎科学社会主义基本原则，体现了中国社会主义初级阶段发展实践的迫切要求。", "options": ["大力发展经济", "解放和发展生产力", "完善分配制度", "巩固民主政治"], "a": "B"}, {"id": 227, "type": "single", "category": "五、邓小平理论", "q": "社会主义本质理论包括了社会主义社会的（  ）问题，又包括了以生产关系为基础的社会关系问题，是一个有机整体。", "options": ["文化发展", "生产力", "法制", "经济基础"], "a": "B"}, {"id": 228, "type": "single", "category": "五、邓小平理论", "q": "资本主义社会的本质是为少数人谋利益的，必然产生（  ），引起两极分化，最终违背社会发展规律。", "options": ["剥削", "公正", "利益", "资本"], "a": "A"}, {"id": 229, "type": "single", "category": "五、邓小平理论", "q": "为了更好的推进中国特色社会主义建设，我们必须在（  ）与生产关系的相互作用中，在根本任务与发展目标的辩证统一中，全面准确地把握社会主义的本质。", "options": ["生产劳动", "生产方式", "生产资料", "生产力"], "a": "D"}, {"id": 230, "type": "single", "category": "五、邓小平理论", "q": "改革开放以来，我国的各项事业均取得了显著的成就。但是，我国经济社会发展中仍然存在着突出的矛盾和问题。解决这些问题的关键是（  ）", "options": ["坚持创新", "回到经典", "同步富裕", "坚持发展"], "a": "D"}, {"id": 231, "type": "single", "category": "五、邓小平理论", "q": "中国特色社会主义理论体系的开篇之作是（  ）", "options": ["毛泽东思想", "邓小平理论", "“三个代表”重要思想", "科学发展观"], "a": "B"}, {"id": 232, "type": "single", "category": "五、邓小平理论", "q": "十一届三中全会决定把党和国家的工作重点转移到（  ）", "options": ["阶级斗争", "生态建设", "社会主义现代化建设", "社会主义政治建设"], "a": "C"}, {"id": 233, "type": "single", "category": "五、邓小平理论", "q": "党的（  ）报告提出了党在社会主义初级阶段的基本路线。", "options": ["十二届六中全会", "十二大", "十三大", "十一届六中全会"], "a": "C"}, {"id": 234, "type": "single", "category": "五、邓小平理论", "q": "要坚持把以经济建设为中心同四项基本原则、改革开放这两个基本点统一于（  ）。", "options": ["社会主义初级阶段", "发展中国特色社会主义的伟大实践", "社会主义市场经济", "全面建成小康社会"], "a": "B"}, {"id": 235, "type": "single", "category": "五、邓小平理论", "q": "“一国两制”的构想，是从解决（  ）地区的问题开始的。", "options": ["香港", "台湾", "澳门", "钓鱼岛"], "a": "B"}, {"id": 236, "type": "single", "category": "五、邓小平理论", "q": "（  ）构想是邓小平在解决台湾问题的过程中提出的，首先在解决香港问题上得以实践。", "options": ["民族复兴", "祖国统一", "“一国两制”", "一带一路"], "a": "C"}, {"id": 237, "type": "single", "category": "五、邓小平理论", "q": "我国社会主义改革是一场新的革命，其性质是（  ）。", "options": ["解放生产力，发展生产力", "社会主义基本制度的根本变革", "建立和完善社会主义市场经济体制", "社会主义制度的自我完善和发展"], "a": "D"}, {"id": 238, "type": "single", "category": "五、邓小平理论", "q": "党的十七大通过的党章把（  ）与“富强、民主、文明”一起写入基本路线。", "options": ["和谐", "美丽", "发展", "改革"], "a": "A"}, {"id": 239, "type": "single", "category": "五、邓小平理论", "q": "党的基本路线是党和国家的（  ）、人民的幸福线。", "options": ["生命线", "基本原则", "发展方向", "历史定位"], "a": "A"}, {"id": 240, "type": "single", "category": "五、邓小平理论", "q": "坚持党的基本路线，必须紧紧围绕（  ）这一中心。", "options": ["经济建设", "政治建设", "社会建设", "文化建设"], "a": "A"}, {"id": 241, "type": "single", "category": "五、邓小平理论", "q": "（  ）是我们党在新时期实现的最根本的拨乱反正。", "options": ["以经济建设为中心的确定", "以政治建设为中心的确定", "以社会建设为中心的确定", "以文化建设为中心的确定"], "a": "A"}, {"id": 242, "type": "single", "category": "五、邓小平理论", "q": "1978年，邓小平在为党的十一届三中全会准备的中央工作会议上发表了（  ）的重要讲话，提出要着手解决党的思想路线问题。", "options": ["《解放思想，实事求是，团结一致向前看》", "《关于建国以来党的若干历史问题的决议》", "《一切从社会主义初级阶段出发》", "《我国方针政策的两个基本点》"], "a": "A"}, {"id": 243, "type": "single", "category": "五、邓小平理论", "q": "（  ）提出“科学技术是第一生产力。”", "options": ["江泽民", "胡锦涛", "毛泽东", "邓小平"], "a": "D"}, {"id": 244, "type": "single", "category": "五、邓小平理论", "q": "邓小平认为建设中国特色社会主义的首要的基本的理论问题是（  ）。", "options": ["什么是马克思主义，怎样发展马克思主义", "建设什么样的党，怎样建设党", "什么是社会主义，怎样建设社会主义", "什么是发展，实现怎样的发展"], "a": "C"}, {"id": 245, "type": "single", "category": "五、邓小平理论", "q": "改革开放以来，邓小平提出了“（  ）才是硬道理”的著名论断，从社会主义本质要求的高度强调发展的重要性。", "options": ["经济", "生产", "发展", "创新"], "a": "C"}, {"id": 246, "type": "single", "category": "五、邓小平理论", "q": "“一国两制”中提出在祖国统一前提下，港澳台（  ）。", "options": ["高度自治", "绝对自由", "完全自治", "完全自由"], "a": "A"}, {"id": 247, "type": "single", "category": "五、邓小平理论", "q": "在“和平统一、一国两制”中，解决台湾问题，实现祖国统一，寄希望于（  ）。", "options": ["国民党", "台湾人民", "台湾学生", "来大陆就业者"], "a": "B"}, {"id": 248, "type": "single", "category": "五、邓小平理论", "q": "“三个有利于”标准是（  ）。", "options": ["判断姓“社”、姓“资”的标准", "实用主义标准", "判断各项工作得失成败的标准", "判断传统和现代的标准"], "a": "C"}, {"id": 249, "type": "single", "category": "五、邓小平理论", "q": "我们党作出进行社会主义市场经济体制改革的重大决定是在（  ）。", "options": ["党的十二大", "党的十三大", "党的十四大", "党的十五大"], "a": "C"}, {"id": 250, "type": "single", "category": "五、邓小平理论", "q": "2018年是我国实施改革开放四十周年，1978年，（  ）作出了实施改革开放的伟大决策。", "options": ["党的十二大", "党的十一大", "党的十一届三中全会", "党的十三大"], "a": "C"}, {"id": 251, "type": "single", "category": "五、邓小平理论", "q": "社会主义社会发展的直接动力是（  ）。", "options": ["阶级斗争", "物质利益原则", "改革", "革命"], "a": "C"}, {"id": 252, "type": "single", "category": "五、邓小平理论", "q": "中国解决所有问题的关键靠（  ）。", "options": ["发展", "改革", "稳定", "公平"], "a": "A"}, {"id": 253, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论是（ ）", "options": ["马克思列宁主义同当代中国实际相结合的产物", "马克思列宁主义同时代特征相结合的产物", "马克思列宁主义同当代中国实际和时代特征相结合的产物", "马克思列宁主义同当代中国改革开放实践相结合的产物"], "a": "C"}, {"id": 254, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论形成与发展的时代背景是（ ）", "options": ["全球化成为时代潮流", "新技术革命浪潮迅猛兴起", "和平与发展成为时代主题", "知识经济初见端倪"], "a": "C"}, {"id": 255, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论形成的现实依据是（ ）", "options": ["马克思列宁主义、毛泽东思想", "当今世界的时代特征和国际形势", "我国和其他国家社会主义建设正反两方面的历史经验和教训", "我国改革开放和现代化建设新的实践"], "a": "D"}, {"id": 256, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论形成的历史依据是（）", "options": ["我国新民主主义革命的历史经验", "我国和其他国家社会主义国家建设正反两方面的历史经验和教训", "西方国家现代化建设的历史经验", "发展中国家现代化建设的历史经验"], "a": "B"}, {"id": 257, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论形成和发展的理论基础是（）", "options": ["马克思列宁主义和毛泽东思想", "我国和其他国家社会主义建设的经验总结", "我国改革开放和现代化建设的经验总结", "时代主题的转换和新技术革命的兴起"], "a": "A"}, {"id": 258, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论集中体现在（ ）", "options": ["党的十五大报告中", "十一届三中全会以来邓小平的主要著作及党和国家的重要文献中", "《邓小平文选》 第三卷中", "邓小平的南方谈话中"], "a": "B"}, {"id": 259, "type": "single", "category": "五、邓小平理论", "q": "解放思想，实事求是是我们党的（ ）", "options": ["政治路线", "组织路线", "思想路线", "工作路线"], "a": "C"}, {"id": 260, "type": "single", "category": "五、邓小平理论", "q": "我国改革开放的起点是从（ ）时开始的。", "options": ["粉碎“四人帮”", "邓小平1977年7月重新复出", "解放思想大讨论", "十一届三中全会"], "a": "D"}, {"id": 261, "type": "single", "category": "五、邓小平理论", "q": "1992 年南方谈话是邓小平理论的（ ）", "options": ["一般著作", "重要著作", "集大成之作", "顶峰之作"], "a": "C"}, {"id": 262, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论形成的标志是（ ）", "options": ["建设有中国特色社会主义理论命题的提出", "社会主义初级阶段理论的提出", "南方谈话", "十四大对建设有中国特色社会主义理论的系统概括"], "a": "D"}, {"id": 263, "type": "single", "category": "五、邓小平理论", "q": "1997 年9 月党的十五大在高举邓小平理论伟大旗帜方面的主要贡献是（ ）", "options": ["正式提出“邓小平理论”的科学概念", "科学阐述邓小平理论的理论体系", "明确揭示“伟大旗帜的”的科学内涵", "第一次高举伟大旗帜"], "a": "A"}, {"id": 264, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论的精髓是（ ）", "options": ["解放思想、实事求是", "两手抓，两手都要硬", "发展是硬道理", "以经济建设为中心"], "a": "A"}, {"id": 265, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论的首要的基本理论问题是（ ）", "options": ["什么是马克思主义，怎样发展马克思主义", "什么是毛泽东思想，怎样坚持毛泽东思想", "什么是社会主义，如何建设社会主义", "什么是中国特色社会主义，怎样建设中国特色社会主义"], "a": "C"}, {"id": 266, "type": "single", "category": "五、邓小平理论", "q": "马克思主义与中国实际相结合的两次历史性飞跃形成的两大理论成果或两大理论体系是（ ）", "options": ["毛泽东思想与邓小平理论", "邓小平理论与“三个代表”重要思想", "建设中国特色社会主义理论与“三个代表”重要思想", "毛泽东思想与中国特色社会主义理论体系"], "a": "D"}, {"id": 267, "type": "single", "category": "五、邓小平理论", "q": "毛泽东思想与邓小平理论相同的地方是（ ）", "options": ["都是马克思列宁主义与中国实际相结合的第一次历史性飞跃的理论成果", "都是关于中国革命和建设的正确的理论原则和经验总结", "都是中国共产党集体智慧的结晶", "都包含了社会主义初级阶段的理论"], "a": "C"}, {"id": 268, "type": "single", "category": "五、邓小平理论", "q": "正式确立了邓小平理论作为党的指导思想的是（ ）", "options": ["党的十四大报告", "党的十五大报告", "党的十五届三中全会文件", "在邓小平同志追悼大会上的悼词"], "a": "B"}, {"id": 269, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论主要深化了对（ ）的科学认识。", "options": ["社会主义革命规律", "社会主义建设规律", "中国共产党执政规律", "人类社会的发展规律"], "a": "B"}, {"id": 270, "type": "single", "category": "五、邓小平理论", "q": "中华人民共和国成立以来，中国面临向何处去的重大历史关头是指（ ）", "options": ["“文化大革命”开始以前", "“文化大革命”结束以后", "“89”政治风波后", "邓小平逝世时"], "a": "B"}, {"id": 271, "type": "single", "category": "五、邓小平理论", "q": "邓小平理论和毛泽东思想之间的关系是（ ）", "options": ["替代关系", "继承关系", "发展关系", "继承与发展的关系"], "a": "D"}, {"id": 272, "type": "single", "category": "五、邓小平理论", "q": "马列主义、毛泽东思想和邓小平理论是一脉相承的理论体系是因为（ ）", "options": ["它们产生的时代背景是一致的", "它们的基本立场和方法是一致的", "它们具体的理论观点是一致的", "它们对革命和建设的目标认识是一致的"], "a": "B"}, {"id": 273, "type": "single", "category": "六、三个代表与科学发展观", "q": "邓小平同志留给我们最为宝贵的财富是（ ）", "options": ["实事求是的思想路线", "党的工作重心的转移", "社会主义初级阶段理论", "邓小平理论体系"], "a": "D"}, {"id": 274, "type": "single", "category": "六、三个代表与科学发展观", "q": "江泽民提出贯彻“三个代表”重要思想的根本要求,关键在(　)", "options": ["坚持与时俱进", "坚持党的先进性", "坚持执政为民", "坚持走群众路线"], "a": "A"}, {"id": 275, "type": "single", "category": "六、三个代表与科学发展观", "q": "中国共产党将“三个代表”重要思想作为党的指导思想写入党章,是在(　)", "options": ["中共十四大", "中共十五大", "中共十六大", "中共十七大"], "a": "C"}, {"id": 276, "type": "single", "category": "六、三个代表与科学发展观", "q": "江泽民在中共十六大报告中指出,党执政兴国的第一要务是(　)", "options": ["发展", "改革", "坚持四项基本原则", "稳定"], "a": "A"}, {"id": 277, "type": "single", "category": "六、三个代表与科学发展观", "q": "“三个代表”重要思想创造性地回答了(　)", "options": ["什么是社会主义,怎样建设社会主义", "建设什么样的党,怎样建设党", "什么是解放思想、实事求是、与时俱进", "发展是执政兴国的第一要务"], "a": "B"}, {"id": 278, "type": "single", "category": "六、三个代表与科学发展观", "q": "我们党全部工作的出发点和落脚点是(　)", "options": ["“三个代表”重要思想", "全面建设小康社会", "坚持与时俱进", "不断实现好维护好发展好最广大人民的根本利益"], "a": "D"}, {"id": 279, "type": "single", "category": "六、三个代表与科学发展观", "q": "江泽民提出贯彻“三个代表”重要思想的根本要求,核心在(　)", "options": ["坚持与时俱进", "保持党的先进性", "坚持执政为民", "坚持发展先进生产力"], "a": "B"}, {"id": 280, "type": "single", "category": "六、三个代表与科学发展观", "q": "社会主义民主政治的本质要求是(　)", "options": ["党的领导", "人民当家作主", "依法治国", "调动人民的积极性"], "a": "B"}, {"id": 281, "type": "single", "category": "六、三个代表与科学发展观", "q": "(　)正式把建立社会主义市场经济体制确立为我国经济体制改革的目标。", "options": ["党的十二大", "党的十三大", "党的十四大", "党的十五大"], "a": "C"}, {"id": 282, "type": "single", "category": "六、三个代表与科学发展观", "q": "领导干部一定要讲学习、讲政治、讲正气,前提是(　)。", "options": ["讲学习", "讲政治", "讲正气", "党要管党、从严治党"], "a": "A"}, {"id": 283, "type": "single", "category": "六、三个代表与科学发展观", "q": "加强和改进党的作风建设,核心问题是（  ）。", "options": ["保持党同人民群众的血肉联系", "纯洁党的队伍,巩固党的组织", "增强党的团结,提高党的战斗力", "加强党员的党性修养"], "a": "A"}, {"id": 284, "type": "single", "category": "六、三个代表与科学发展观", "q": "中共十六大的历史性贡献是(　)。", "options": ["把“三个代表”重要思想确立为党必须长期坚持的指导思想", "提出在新世纪新阶段全面建设小康社会的奋斗目标", "总结了党领导人民建设有中国特色社会主义必须坚持的十条基本经验", "提出了全面推进党的建设新的伟大工程"], "a": "A"}, {"id": 285, "type": "single", "category": "六、三个代表与科学发展观", "q": "中国共产党的最大政治优势是(　)。", "options": ["一切从实际出发", "加强思想理论建设", "密切联系群众", "坚持对外开放"], "a": "C"}, {"id": 286, "type": "single", "category": "六、三个代表与科学发展观", "q": "人民群众的整体利益总是由各方面的具体利益构成的,其中最紧要和最具有决定性的因素是(　)。", "options": ["工人阶级和广大知识分子的利益", "工人阶级的利益", "最大多数人的利益", "农民阶级的利益"], "a": "C"}, {"id": 287, "type": "single", "category": "六、三个代表与科学发展观", "q": "“三个代表”重要思想把党的建设新的伟大工程同中国特色社会主义伟大事业紧密联系起来,赋予党的性质、宗旨、指导思想和任务以丰富的时代内容,确定了(　)。", "options": ["小康社会的发展目标", "民主政治建设的总体部署", "政治体制改革的总目标", "党的建设的总体部署"], "a": "D"}, {"id": 288, "type": "single", "category": "六、三个代表与科学发展观", "q": "“三个代表”重要思想是我们党的立党之本、执政之基、力量之源。这里的“本”“基”“源”,说到底就是(　)。", "options": ["发展先进生产力", "发展先进文化", "人民群众的支持和拥护", "人民群众生活水平的提高"], "a": "C"}, {"id": 289, "type": "single", "category": "六、三个代表与科学发展观", "q": "贯彻“三个代表”重要思想,必须使全党始终保持与时俱进的精神状态,与时俱进就是(　)。", "options": ["党的全部理论和工作要体现时代性,把握规律性,赋予创造性", "要看到我国社会主义建设发生的重大变化", "要看到广大党员干部和人民群众工作、生活条件和社会环境发生的重大变化", "要自觉地把思想认识从那些不合时宜的观念、做法和体制的束缚中解放出来"], "a": "A"}, {"id": 290, "type": "single", "category": "六、三个代表与科学发展观", "q": "我们为实现社会主义现代化,最根本的就是要(　)。", "options": ["建设社会主义精神文明", "通过改革和发展,使我国形成发达的生产力", "推进人的全面发展", "提高人民生活水平"], "a": "B"}, {"id": 291, "type": "single", "category": "六、三个代表与科学发展观", "q": "要切实加强思想道德建设,就要以(　)为核心。", "options": ["爱国敬业", "集体主义", "为人民服务", "诚实守信"], "a": "C"}, {"id": 292, "type": "single", "category": "六、三个代表与科学发展观", "q": "江泽民同志在十六大报告中,提出贯彻“三个代表”重要思想的根本要求,本质在(　)。", "options": ["坚持与时俱进", "坚持理论联系实际", "坚持执政为民", "坚持党的先进性"], "a": "C"}, {"id": 293, "type": "single", "category": "六、三个代表与科学发展观", "q": "面向21世纪推进党的建设的新的伟大工程的纲领是(　)。", "options": ["毛泽东思想", "邓小平理论", "“三个代表”重要思想", "毛泽东思想、邓小平理论、“三个代表”重要思想"], "a": "C"}, {"id": 294, "type": "single", "category": "六、三个代表与科学发展观", "q": "科学发展观强调坚持以（）为中心，把发展生产力作为首要任务，把经济发展作为一切发展的前提，体现了历史唯物主义关于生产力是人类社会发展的基础的观点。", "options": ["政治建设", "经济建设", "文化建设", "环境建设"], "a": "B"}, {"id": 295, "type": "single", "category": "六、三个代表与科学发展观", "q": "“要独立自主就不能对外开放”和“要对外开放就不能独立自主”这两个观点的共同错误是。", "options": ["主张关起门来搞建设", "把发展本国经济的希望寄托在外援上", "主张发展对外贸易与保护民族工业不能分割", "否认独立自主、自力更生与对外开放相互联系、相互促进"], "a": "D"}, {"id": 296, "type": "single", "category": "六、三个代表与科学发展观", "q": "科学发展观的内涵极为丰富，其核心是（）。", "options": ["以人为本", "全面发展", "协调发展", "统筹兼顾"], "a": "A"}, {"id": 297, "type": "single", "category": "六、三个代表与科学发展观", "q": "科学发展观创造性地回答了（）的基本问题。", "options": ["什么是社会主义、怎样建设社会主义", "建设什么样的党、怎样建设党", "实现什么样的发展、怎样发展", "建设什么样的中国特色社会主义、怎么建设中国特色社会主义"], "a": "C"}, {"id": 298, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "在马克思主义传入中国的同时，也有其他流派主义传入中国。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 299, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "李大钊在传播马克思主义时，并没有想到马克思主义在中国与其他国家是不同的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 300, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "毛泽东在《反对本本》一书中强调马克思主义的“本本”是不需要学习的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 301, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "马克思主义中国化就是将马克思主义所有内容同中国具体实践相结合。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 302, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "马克思主义中国化理论成果的精髓是实事求是。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 303, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "思想理论是社会变革的先导。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 304, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想就是毛泽东个人的思想。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 305, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "毛泽东思想是被实践证明了的关于中国革命和建设的正确的理论原则和经验总结。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 306, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "毛泽东晚年特别是在“文化大革命”中犯了严重错误，但就他的一生来看，他的功绩是第一位的，他的过失是第二位的。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 307, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "党领导人民革命、建设和改革中取得的一切成果，从跟本上说，都是因为坚持了实事求是的思想路线。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 308, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "毛泽东传统文化观的核心思想就是站在马列主义立场上，批判地继承了中国的传统文化。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 309, "type": "judge", "category": "二、新民主主义革命理论", "q": "在经历了大革命的失败后，党总结革命的经验教训，提出了“须知政权是由枪杆子中取得的”的著名论断。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 310, "type": "judge", "category": "二、新民主主义革命理论", "q": "“认清中国社会的性质，就是说，认清中国的国情，乃是认清一切革命问题的基本根据”是毛泽东的名言。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 311, "type": "judge", "category": "二、新民主主义革命理论", "q": "帝国主义是中国革命的首要对象。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 312, "type": "judge", "category": "二、新民主主义革命理论", "q": "土地革命是民主革命的基本内容；武装斗争是中国革命的主要形式，是农村根据地建设和土地革命的强有力保证。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 313, "type": "judge", "category": "二、新民主主义革命理论", "q": "官僚资本主义对劳动人民的残酷剥削和对民族工商业的巧取豪夺，严重地束缚了中国社会生产力的发展，因此也是中国革命的对象。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 314, "type": "judge", "category": "二、新民主主义革命理论", "q": "和新民主主义国体相适应的政体，是民主集中制的人民代表大会制度。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 315, "type": "judge", "category": "二、新民主主义革命理论", "q": "新民主主义革命总路线反映了中国革命的基本规律，指明了中国革命的对象、动力、领导力量，是新民主主义革命的指导路线。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 316, "type": "judge", "category": "一、毛泽东思想及历史地位", "q": "实事求是，群众路线，独立自主是毛泽东思想的精髓。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 317, "type": "judge", "category": "二、新民主主义革命理论", "q": "外国资本主义入侵，给中国带来了灾难，但也促进了封建主义和资本主义的发展。所以外国资本主义的入侵，总的来讲是功大于过。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 318, "type": "judge", "category": "二、新民主主义革命理论", "q": "党的三大优良作风是理论和实践相结合的作风、密切联系群众的作风和艰苦奋斗的作风。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 319, "type": "judge", "category": "二、新民主主义革命理论", "q": "中国民族资产阶级是一个具有革命性的阶级。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 320, "type": "judge", "category": "二、新民主主义革命理论", "q": "知识分子是中国革命的主力军，是无产阶级可靠的同盟者。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 321, "type": "judge", "category": "二、新民主主义革命理论", "q": "官僚资本主义始终是中国革命的敌人。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 322, "type": "judge", "category": "二、新民主主义革命理论", "q": "抗日战争时期大地主大资产阶级是抗日民族统一战线的组成部分。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 323, "type": "judge", "category": "二、新民主主义革命理论", "q": "中国革命统一战线中有两个联盟：一是工农联盟，二是工人阶级同其他非劳动人民的联盟，主要是同民族资产阶级的联盟。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 324, "type": "judge", "category": "二、新民主主义革命理论", "q": "1921年7月，中共一大第一次提出了党的奋斗目标是实现共产主义。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 325, "type": "judge", "category": "二、新民主主义革命理论", "q": "中国的武装斗争实质上无产阶级领导的农民战争。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 326, "type": "judge", "category": "二、新民主主义革命理论", "q": "没收官僚资本具有双重革命性质。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 327, "type": "judge", "category": "二、新民主主义革命理论", "q": "中国共产党战胜敌人的三大法宝是党的建设，人民军队，工农武装割据。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 328, "type": "judge", "category": "二、新民主主义革命理论", "q": "中国革命的中心问题是无产阶级领导权问题。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 329, "type": "judge", "category": "三、社会主义改造理论", "q": "毛泽东在建国前夕对由新民主主义社会向社会主义社会过渡所需的时间估计是十到十五年或二十年。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 330, "type": "judge", "category": "三、社会主义改造理论", "q": "中国新民主主义社会是一个独立的社会形态。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 331, "type": "judge", "category": "三、社会主义改造理论", "q": "新民主主义社会属于社会主义社会体系。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 332, "type": "judge", "category": "三、社会主义改造理论", "q": "在新民主主义社会中，社会主义的因素不论在经济上还是在政治上都已经居于领导地位，但非社会主义因素仍有很大比重。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 333, "type": "judge", "category": "三、社会主义改造理论", "q": "实践证明，中国可以在没有实现工业化的情况下进入社会主义。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 334, "type": "judge", "category": "三、社会主义改造理论", "q": "实现中华民族伟大复兴，必须建立符合我国实际的先进社会制度。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 335, "type": "judge", "category": "三、社会主义改造理论", "q": "中国只有在实现工业化的情况下才能进入社会主义。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 336, "type": "judge", "category": "三、社会主义改造理论", "q": "经济文化比较落后的国家不能够先于发达国家实行社会主义革命。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 337, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国成立，实现了从新民主主义社会到社会主义社会的转变。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 338, "type": "judge", "category": "三、社会主义改造理论", "q": "国家对手工业的社会主义改造的第一步是办手工业供销小组。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 339, "type": "judge", "category": "三、社会主义改造理论", "q": "对资本主义工商业进行社会主义改造过程中，国家资本主义利润分配依据“四马分肥”的方式进行。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 340, "type": "judge", "category": "三、社会主义改造理论", "q": "“红色资本家”荣毅仁担任过国家副主席。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 341, "type": "judge", "category": "三、社会主义改造理论", "q": "社会主义工业化建设与社会主义改造同时进行会容易顾此失彼，影响中国社会主义前进的步伐。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 342, "type": "judge", "category": "三、社会主义改造理论", "q": "中国进入社会主义的前提是实现工业化。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 343, "type": "judge", "category": "三、社会主义改造理论", "q": "列宁认为在经济文化落后的国家是不能建成社会主义的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 344, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期，我国经济文化比较落后，所以应先发展资本主义再进行社会主义革命。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 345, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国的成立，标志着我国已进入社会主义初级阶段。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 346, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国的成立，标志着半殖民地半封建社会的结束，实现了新民主主义向社会主义的转变。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 347, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国成立后，我国社会的主要矛盾是资产阶级和无产阶级的矛盾。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 348, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期，我国的国家资本主义经济是一种资本主义经济。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 349, "type": "judge", "category": "三、社会主义改造理论", "q": "我国社会主义改革实质是对50年代中期社会主义改造的否定。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 350, "type": "judge", "category": "三、社会主义改造理论", "q": "新民主主义社会带有过渡性质，是近代中国由半殖民地半封建社会走向社会主义社会的中介和桥梁。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 351, "type": "judge", "category": "三、社会主义改造理论", "q": "在中国社会主义改革与社会主义改造关系问题上，有人说：早知今日，何必当初？", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 352, "type": "judge", "category": "三、社会主义改造理论", "q": "我国从新民主主义进入社会主义的标志是中华人民共和国的成立。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 353, "type": "judge", "category": "三、社会主义改造理论", "q": "1953年到1956年中国国内的主要矛盾是工人阶级同资产阶级的矛盾、社会主义道路同资本主义道路的矛盾。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 354, "type": "judge", "category": "三、社会主义改造理论", "q": "新中国成立之初，我们社会的主要矛盾是广大人民群众同帝国主义、封建主义、国民党反动派残余之间的矛盾。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 355, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期，社会主义性质的国营经济和合作社经济，为新民主主义向社会主义的转变奠定了强有力的经济基础。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 356, "type": "judge", "category": "三、社会主义改造理论", "q": "面对新中国建立初期的复杂形势，我们的斗争策略是不要四面出击。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 357, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国的成立，标志着半殖民地半封建社会的结束。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 358, "type": "judge", "category": "三、社会主义改造理论", "q": "过渡时期，国内的主要矛盾是人民大众同地主阶级、国民党残余势力和帝国主义势力的矛盾。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 359, "type": "judge", "category": "三、社会主义改造理论", "q": "新中国建立之初的当务之急是实行新民主主义向社会主义的转变。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 360, "type": "judge", "category": "三、社会主义改造理论", "q": "新中国成立时，《中国人民政治协商会议共同纲领》起着临时宪法的作用。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 361, "type": "judge", "category": "三、社会主义改造理论", "q": "因为新民主主义革命是资产阶级性质的民主革命，所以新民主主义社会也是资本主义性质的社会。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 362, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期，中国面临的主要任务是进行大规模的社会主义改造和有计划的经济建设。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 363, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期党的主要任务是：一方面继续完成民主革命遗留的任务，另一方面是建立新中国。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 364, "type": "judge", "category": "三、社会主义改造理论", "q": "在农业社会主义改造中建立的初级农业生产合作社具有完全的社会主义性质。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 365, "type": "judge", "category": "三、社会主义改造理论", "q": "建国初期，我国的国营经济主要是通过没收官僚资本和民族资本建立的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 366, "type": "judge", "category": "三、社会主义改造理论", "q": "中华人民共和国成立后头三年的主要任务是对生产资料私有制的社会主义改造。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 367, "type": "judge", "category": "三、社会主义改造理论", "q": "党在过渡时期的总路线和总任务是在一个相当长的时期内，逐步实现国家的社会主义工业化，并逐步实现国家对农业、手工业和资本主义工商业的社会主义改造。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 368, "type": "judge", "category": "三、社会主义改造理论", "q": "过渡时期总路线是社会主义建设与改造同时并举的路线。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 369, "type": "judge", "category": "三、社会主义改造理论", "q": "中国在对资本主义工商业实行社会主义改造的过程中，在利润分配上采取的政策是劳资两利、公私兼顾。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 370, "type": "judge", "category": "三、社会主义改造理论", "q": "在农业社会主义改造中建立的初级农业生产合作社具有半社会主义性质。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 371, "type": "judge", "category": "三、社会主义改造理论", "q": "对民族工商业和平赎买就是国家一次性拿出一笔钱购买为国家所有。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 372, "type": "judge", "category": "三、社会主义改造理论", "q": "我国对资本主义工商业的社会主义改造采取的是和平赎买政策。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 373, "type": "judge", "category": "三、社会主义改造理论", "q": "中国社会主义改造时期，国家对私人资本主义采取的是剥夺政策。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 374, "type": "judge", "category": "三、社会主义改造理论", "q": "中国的民族资产阶级在社会主义革命阶段仍然具有两面性。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 375, "type": "judge", "category": "三、社会主义改造理论", "q": "新中国在资本主义私有制改造完成以后，资产阶级作为一个阶级已基本上不存在。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 376, "type": "judge", "category": "三、社会主义改造理论", "q": "中国对资本主义工商业实行和平改造的办法，不仅没有破坏生产，反而促进了生产。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 377, "type": "judge", "category": "三、社会主义改造理论", "q": "对资本主义工商业的社会主义改造就是指的对生产资料所有制的改造。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 378, "type": "judge", "category": "三、社会主义改造理论", "q": "社会主义改造基本完成后，中国共产党的中心任务是集中力量发展生产力，建设社会主义现代化强国。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 379, "type": "judge", "category": "三、社会主义改造理论", "q": "1956年我国在生产资料所有制的社会主义改造基本完成后，开始进入全面建设社会主义时期。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 380, "type": "judge", "category": "三、社会主义改造理论", "q": "社会主义改造的完成标志着中国建成了社会主义社会。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 381, "type": "judge", "category": "三、社会主义改造理论", "q": "我国社会主义改造基本完成以后，阶级斗争还将在一定范围内长期存在，在某种条件下还有可能激化，但阶级斗争已经不是主要矛盾。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 382, "type": "judge", "category": "三、社会主义改造理论", "q": "1949年中华人民共和国的成立，标志着社会主义制度在中国的确立。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 383, "type": "judge", "category": "三、社会主义改造理论", "q": "1956年生产资料私有制的社会主义改造完成后,社会主义制度已经确立,这表明中国已经建成社会主义了。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 384, "type": "judge", "category": "四、建设道路初步探索", "q": "在处理人民内部矛盾上，正确的方法是“批评-团结-批评”的方法。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 385, "type": "judge", "category": "四、建设道路初步探索", "q": "社会主义社会的基本矛盾是要通过革命的方式进行解决。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 386, "type": "judge", "category": "四、建设道路初步探索", "q": "中共八大明确提出社会主义社会的主要任务是阶级斗争。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 387, "type": "judge", "category": "四、建设道路初步探索", "q": "中国共产党在其犯严重错误的时候，它的性质和宗旨都是没有发生改变的。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 388, "type": "judge", "category": "四、建设道路初步探索", "q": "在1954年被第一次提出的四个现代化为工业、农业、交通运输业和国防业的现代化。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 389, "type": "judge", "category": "四、建设道路初步探索", "q": "关于新中国成立后走中国工业化道路，调整和完善所有制结构，陈云提出了著名的“三个主体，三个补充”理论。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 390, "type": "judge", "category": "四、建设道路初步探索", "q": "1956年社会主义改造完成后，我国的基本国情是仍处于并将长期处于社会主义初级阶段。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 391, "type": "judge", "category": "四、建设道路初步探索", "q": "独立自主就是关起门来搞建设。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 392, "type": "judge", "category": "五、邓小平理论", "q": "市场经济是资源配置的一种方式。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 393, "type": "judge", "category": "五、邓小平理论", "q": "马克思最早提出科学技术是生产力的一部分。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 394, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论是以邓小平为主要代表的中国共产党人立足中国又面向世界，总结历史又正视现实.放眼未来，把马克思主义基本原理同中国的国情和时代特征结合起来，在研究新情况.解决新问题的过程中形成发展起来的。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 395, "type": "judge", "category": "五、邓小平理论", "q": "台湾问题是中国国内战争遗留下来的问题，其实质是内政问题。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 396, "type": "judge", "category": "五、邓小平理论", "q": "改革不是对原有经济体制细枝末节的修补，而是一场全面的社会变革。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 397, "type": "judge", "category": "五、邓小平理论", "q": "改革是对我国经济体制，政治体制的根本性变革。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 398, "type": "judge", "category": "五、邓小平理论", "q": "社会主义市场经济体制是社会主义基本制度与市场经济的结合。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 399, "type": "judge", "category": "五、邓小平理论", "q": "社会主义精神文明是社会主义社会的重要特征。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 400, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论指导了中国革命的伟大实践。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 401, "type": "judge", "category": "五、邓小平理论", "q": "邓小平提出实现现代化的关键是科学技术。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 402, "type": "judge", "category": "五、邓小平理论", "q": "改革开放是中国共产党在新的时代条件下带领人民进行的新的伟大革命。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 403, "type": "judge", "category": "五、邓小平理论", "q": "革命是解放生产力，改革也是解放生产力。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 404, "type": "judge", "category": "五、邓小平理论", "q": "中共“十三大”正式制定了社会主义现代化建设“三步走”的战略部署。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 405, "type": "judge", "category": "五、邓小平理论", "q": "社会主义初级阶段是任何国家进入社会主义社会时都必须经历的阶段。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 406, "type": "judge", "category": "五、邓小平理论", "q": "中国经济体制改革，首先是在城市取得突破的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 407, "type": "judge", "category": "五、邓小平理论", "q": "邓小平南方谈话和中共十四大，标志着中国的改革开放进入从计划经济体制向社会主义市场经济体制转变的新阶段。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 408, "type": "judge", "category": "五、邓小平理论", "q": "在社会主义初级阶段，阶级矛盾和阶级斗争仍在一定范围内长期存在。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 409, "type": "judge", "category": "五、邓小平理论", "q": "马克思主义中国化第二次历史性飞跃的理论成果是中国特色社会主义理论体系。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 410, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论第一次比较系统地初步回答了中国社会主义的发展道路、发展阶段、根本任务、发展动力、外部条件、政治保证、战略步骤、党的领导和依靠力量以及祖国统一等一系列基本问题。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 411, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论指导我们党制定了在社会主义初级阶段的基本路线。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 412, "type": "judge", "category": "五、邓小平理论", "q": "“一个中心、两个基本点”是社会主义初级阶段基本路线的最主要内容。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 413, "type": "judge", "category": "五、邓小平理论", "q": "“自力更生，艰苦创业”是实现社会主义现代化奋斗目标的根本立足点。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 414, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论就是对毛泽东思想的否定和超越。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 415, "type": "judge", "category": "五、邓小平理论", "q": "中国特色社会主义道路、中国特色社会主义理论体系共同构成中国特色社会主义伟大旗帜。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 416, "type": "judge", "category": "五、邓小平理论", "q": "“邓小平理论”这个科学概念的正式提出是在江泽民同志在党的第十五次全国代表大会上所作的政治报告中。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 417, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论是党和人民实践经验和集体智慧的结晶。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 418, "type": "judge", "category": "五、邓小平理论", "q": "邓小平理论作为马列主义、毛泽东思想的继承和发展，已经达到最完美的阶段。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 419, "type": "judge", "category": "五、邓小平理论", "q": "在当代中国除了邓小平理论，没有别的理论能够指导中国现实社会主义现代化建设。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 420, "type": "judge", "category": "六、三个代表与科学发展观", "q": "党执政后的最大危险是脱离群众。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 421, "type": "judge", "category": "六、三个代表与科学发展观", "q": "“三个代表”重要思想的精神实质是始终保持党的先进性。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 422, "type": "judge", "category": "六、三个代表与科学发展观", "q": "中国共产党面临的最根本的课题是能不能促进生产力的发展。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 423, "type": "judge", "category": "六、三个代表与科学发展观", "q": "从根本上说,政治问题主要是对人民群众的态度问题、同人民群众的关系问题。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 424, "type": "judge", "category": "六、三个代表与科学发展观", "q": "发展社会主义先进文化,就是建设社会主义精神文明。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 425, "type": "judge", "category": "六、三个代表与科学发展观", "q": "保持党的先进性首先是由党的历史任务决定的。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 426, "type": "judge", "category": "六、三个代表与科学发展观", "q": "越是发展经济,越是改革开放,越要重视思想政治工作。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 427, "type": "judge", "category": "六、三个代表与科学发展观", "q": "我们搞的是社会主义市场经济,“社会主义”这几个字是画蛇添足。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}, {"id": 428, "type": "judge", "category": "六、三个代表与科学发展观", "q": "“三个代表”重要思想是立足于党的历史、总结党的历史经验得出的重要结论。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 429, "type": "judge", "category": "六、三个代表与科学发展观", "q": "经过新中国成立以来特别是改革开放以来的不懈努力，我国经济社会发展取得了举世瞩目的成就，但仍处于并将长期处于社会主义初级阶段的基本国情没有变。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 430, "type": "judge", "category": "六、三个代表与科学发展观", "q": "十七大报告提出了“中国特色社会主义理论体系”的科学概念，把科学发展观与邓小平理论、“三个代表”重要思想一道作为中国特色社会主义理论体系的重要组成部分。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 431, "type": "judge", "category": "六、三个代表与科学发展观", "q": "科学发展观是中国特色社会主义理论体系的接续发展。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 432, "type": "judge", "category": "六、三个代表与科学发展观", "q": "发展观是关于发展的本质、目的、内涵和要求的总体看法和根本观点，决定了经济社会发展的总体战略和基本模式，对经济社会发展实践具有根本性、全局性的重大影响。", "options": ["正确 (Y)", "错误 (N)"], "a": "Y"}, {"id": 433, "type": "judge", "category": "六、三个代表与科学发展观", "q": "科学发展观，第一要义是发展，核心立场是以人为本，基本要求是高速度发展。", "options": ["正确 (Y)", "错误 (N)"], "a": "N"}];
+
+    // Explanations for tricky/false questions
+    const FALSE_EXPLANATIONS = {
+      299: "李大钊在传播马克思主义时，已经指出要把马克思主义同中国实际结合。",
+      300: "毛泽东在《反对本本主义》中强调：“马克思主义的‘本本’是要学习的，但是必须同我国的实际情况相结合。”",
+      301: "马克思主义中国化是将马克思主义“基本原理”（而非所有内容/具体结论）同中国具体实际相结合。",
+      304: "毛泽东思想是中国共产党集体智慧的结晶，不是毛泽东个人的思想。",
+      316: "易错高频坑！实事求是、群众路线、独立自主是毛泽东思想的“活的灵魂”；其中只有“实事求是”才是精髓！",
+      317: "外国资本主义入侵给中国带来了深重灾难，阻碍了中国独立发展，绝不是“功大于过”。",
+      318: "三大优良作风是：理论和实践相结合、密切联系群众、批评与自我批评（不是艰苦奋斗）。",
+      319: "民族资产阶级具有两面性（革命性与动摇性/妥协性），不能简单说是一个具有革命性的阶级。",
+      320: "⚠️ 题库特殊答案提醒：教材通常说农民是主力军，但本题库标准答案设为 Y（正确），考试遇原题请选 Y！",
+      321: "抗日战争时期，亲英美派大地主大资产阶级曾参加抗日民族统一战线，并非始终是敌人。",
+      322: "大地主大资产阶级中的亲日派是汉奸敌人，只有亲英美派才是抗日民族统一战线的组成部分。",
+      327: "三大法宝是：统一战线、武装斗争、党的建设（不是人民军队、工农武装割据）。",
+      330: "新民主主义社会不是一个独立的社会形态，而是由新民主主义向社会主义转变的过渡性质社会。",
+      335: "实践证明，中国可以在没有实现工业化的情况下先通过社会主义改造进入社会主义。",
+      336: "经济文化落后的国家可以先于发达国家实行社会主义革命。",
+      337: "1949年新中国成立标志着进入新民主主义社会；1956年底三大改造完成才实现向社会主义社会的转变。",
+      341: "“一化三改”同时并举、相互促进，工业化是主体，三大改造是两翼。",
+      342: "中国是先完成社会主义改造建立社会主义制度，再继续推进社会主义工业化。",
+      343: "列宁认为经济文化落后的国家完全可以先夺取政权并建成社会主义。",
+      344: "建国初期走的是新民主主义向社会主义过渡的道路，而不是先发展资本主义。",
+      345: "1956年底社会主义改造基本完成，才标志着我国进入社会主义初级阶段。",
+      346: "新中国成立标志着半殖民地半封建社会结束，但尚未实现向社会主义的转变（1956年才完成转变）。",
+      347: "建国头三年（1949-1952）主要矛盾是人民大众同帝国主义、封建主义、国民党残余势力的矛盾；1953年土地改革完成后才转变为工人阶级和资产阶级的矛盾。",
+      348: "建国初期的国家资本主义是在人民政府管理下、同社会主义国营经济相联系的过渡性经济，不是普通资本主义经济。",
+      349: "社会主义改革是社会主义制度的自我完善和发展，绝不是对50年代社会主义改造的否定。",
+      351: "社会主义改造为当代中国一切发展进步奠定了根本制度基础，改革与改造不能相互否定。",
+      352: "进入社会主义的标志是1956年底三大改造基本完成，而非1949年新中国成立。",
+      358: "过渡时期（1953-1956）国内主要矛盾是工人阶级同资产阶级、社会主义道路同资本主义道路的矛盾。",
+      359: "新中国建立之初（1949-1952）的当务之急是完成民主革命遗留任务和恢复国民经济。",
+      361: "新民主主义社会虽然衔接资产阶级民主革命，但社会主义因素居领导地位，属于社会主义体系。",
+      362: "建国初期（1949-1952）主要任务是完成民主革命遗留任务和恢复国民经济；1953年才开始大规模改造和一五计划。",
+      363: "新中国已经建立了，建国初期任务是一方面继续完成民主革命遗留任务，另一方面恢复国民经济、巩固新生政权。",
+      364: "初级农业生产合作社属于“半社会主义性质”；高级社才是完全的社会主义性质。",
+      365: "国营经济主要是通过“没收官僚资本”建立的；对民族资本采取的是和平赎买而非没收。",
+      366: "建国后头三年（1949-1952）主要任务是恢复国民经济和完成民主革命遗留任务。",
+      369: "利润分配上采取的政策是“四马分肥”（国家所得税、企业公积金、工人福利费、资方红利）。",
+      371: "和平赎买不是由国家一次性拿出一笔钱购买，而是通过“四马分肥”和“定股定息”让资本家从企业利润中分得一部分收益。",
+      373: "对私人资本主义（民族资本）采取的是利用、限制、改造（和平赎买）政策，而非剥夺政策。",
+      377: "对资本主义工商业的改造不仅包括对生产资料所有制的改造（改造企业），还包括对人的改造（把剥削者改造为自食其力的劳动者）。",
+      380: "三大改造完成标志着我国“进入”了社会主义社会（社会主义制度初步确立），但远未“建成”社会主义。",
+      382: "1956年底三大改造基本完成，才标志着社会主义制度在中国的确立。",
+      383: "1956年社会主义制度初步确立，标志着我国进入社会主义初级阶段，而不是已经“建成”社会主义。",
+      384: "处理人民内部矛盾的正确公式是“团结—批评—团结”，不是“批评—团结—批评”。",
+      385: "社会主义社会基本矛盾是非对抗性的，可以通过社会主义制度本身（自我调整和改革）不断得到解决，不需要通过革命。",
+      386: "中共八大明确提出社会主义社会的主要任务是集中力量发展社会生产力，实现国家工业化，阶级斗争已不是主要矛盾。",
+      391: "独立自主是依靠本国人民力量搞建设，但绝不等于关起门来搞建设，必须把独立自主与对外开放结合起来。",
+      397: "改革是社会主义制度的自我完善和发展，不是对政治体制/根本制度的推翻式变革。",
+      400: "指导中国革命伟大实践的是毛泽东思想；邓小平理论指导的是改革开放和社会主义现代化建设。",
+      405: "社会主义初级阶段不是任何国家进入社会主义都必须经历的阶段，而是特指我国生产力落后、商品经济不发达条件下建设社会主义必然经历的特定阶段。",
+      406: "中国经济体制改革首先是在“农村”（家庭联产承包责任制）取得突破的，随后才推进到城市。",
+      414: "邓小平理论是对毛泽东思想的继承和发展，绝不是否定。",
+      418: "马克思主义中国化理论成果是不断发展的开放体系，没有“最完美/终极”阶段。",
+      419: "除了邓小平理论，还有“三个代表”重要思想、科学发展观、习近平新时代中国特色社会主义思想等共同指导现代化建设。",
+      421: "保持党的先进性是“核心”；“三个代表”重要思想的精髓/精神实质是解放思想、实事求是、与时俱进。",
+      422: "题库判定为错误（N）。",
+      425: "保持党的先进性首先是由党的性质和宗旨决定的，题库判定为错误（N）。",
+      427: "我们搞的是社会主义市场经济，“社会主义”几个字绝不是画蛇添足，它定义了市场经济与社会主义基本制度紧密结合的性质。",
+      433: "科学发展观的基本要求是“全面协调可持续”，不是“高速度发展”。"
+    };
+
+    // State Management
+    const STORAGE_KEY = "maozhongte_quiz_state_v1";
+    let userState = {
+      answered: {}, // { [id]: { choice: 'A', correct: true } }
+      wrongIds: [],
+      starIds: [],
+      lastIndex: 0
+    };
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        userState = { ...userState, ...parsed };
+      }
+    } catch (e) {}
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      } catch (e) {}
+      updateHeaderStats();
+    }
+
+    let currentMode = "practice"; // practice | memorize | exam | wrong | star | list
+    let filteredList = [...RAW_QUESTIONS];
+    let currentIndex = 0;
+    let examTimer = null;
+    let examSecondsLeft = 45 * 60;
+
+    // DOM Elements
+    const elStatDone = document.getElementById("stat-done");
+    const elStatAcc = document.getElementById("stat-acc");
+    const elStatWrong = document.getElementById("stat-wrong");
+    const elStatStar = document.getElementById("stat-star");
+    const elTabWrongCount = document.getElementById("tab-wrong-count");
+    const elTabStarCount = document.getElementById("tab-star-count");
+
+    const elFilterCategory = document.getElementById("filter-category");
+    const elFilterType = document.getElementById("filter-type");
+    const elSearchForm = document.getElementById("search-form");
+    const elSearchInput = document.getElementById("search-input");
+    const elBtnClearSearch = document.getElementById("btn-clear-search");
+    const elChkAutoNext = document.getElementById("chk-auto-next");
+    const elChkRandomOrder = document.getElementById("chk-random-order");
+
+    const elCardView = document.getElementById("card-view");
+    const elListView = document.getElementById("list-view");
+    const elListCount = document.getElementById("list-count");
+    const elListContainer = document.getElementById("list-container");
+    const elChkListMask = document.getElementById("chk-list-mask");
+
+    const elBadgeType = document.getElementById("q-badge-type");
+    const elBadgeCat = document.getElementById("q-badge-cat");
+    const elBadgeId = document.getElementById("q-badge-id");
+    const elCounter = document.getElementById("q-counter");
+    const elProgress = document.getElementById("quiz-progress");
+    const elBtnStarCurrent = document.getElementById("btn-star-current");
+    const elStem = document.getElementById("q-stem");
+    const elOptions = document.getElementById("q-options");
+    const elFeedback = document.getElementById("q-feedback");
+    const elFeedbackTitle = document.getElementById("q-feedback-title");
+    const elFeedbackBody = document.getElementById("q-feedback-body");
+
+    const elBtnPrev = document.getElementById("btn-prev");
+    const elBtnNext = document.getElementById("btn-next");
+    const elBtnShowAns = document.getElementById("btn-show-ans");
+
+    const elGridDialog = document.getElementById("grid-dialog");
+    const elGridContainer = document.getElementById("grid-container");
+    const elExamDialog = document.getElementById("exam-dialog");
+    const elExamResultContent = document.getElementById("exam-result-content");
+    const elExamTimerBox = document.getElementById("exam-timer-box");
+    const elExamTimerText = document.getElementById("exam-timer-text");
+
+    function updateHeaderStats() {
+      const answeredKeys = Object.keys(userState.answered);
+      const totalDone = answeredKeys.length;
+      const correctCount = answeredKeys.filter(k => userState.answered[k].correct).length;
+      const acc = totalDone > 0 ? Math.round((correctCount / totalDone) * 100) : 0;
+
+      elStatDone.textContent = `${totalDone}/${RAW_QUESTIONS.length}`;
+      elStatAcc.textContent = `${acc}%`;
+      elStatWrong.textContent = userState.wrongIds.length;
+      elStatStar.textContent = userState.starIds.length;
+      elTabWrongCount.textContent = userState.wrongIds.length;
+      elTabStarCount.textContent = userState.starIds.length;
+
+      // Update progress bar hue dynamically via CSS custom property
+      const hue = acc >= 80 ? 145 : acc >= 60 ? 215 : 350;
+      elProgress.style.setProperty("--brand-hue", hue);
+    }
+
+    function getExplanation(q) {
+      if (FALSE_EXPLANATIONS[q.id]) {
+        return FALSE_EXPLANATIONS[q.id];
+      }
+      if (q.type === "judge") {
+        return q.a === "Y"
+          ? "本题表述完全正确（Y），符合教材标准论断。"
+          : "本题表述存在概念偷换或史实错误，标准答案为错误（N）。";
+      }
+      const idx = ["A", "B", "C", "D"].indexOf(q.a);
+      const rightText = q.options[idx] || q.a;
+      const filled = q.q.replace(/（\s*）|\(\s*\)/g, `【${rightText}】`);
+      return `完整速记句：${filled}`;
+    }
+
+    function applyFilters(preserveIndex = false) {
+      const cat = elFilterCategory.value;
+      const type = elFilterType.value;
+      const kw = elSearchInput.value.trim().toLowerCase();
+
+      elBtnClearSearch.classList.toggle("hidden", !kw);
+
+      if (currentMode === "exam") {
+        // Exam mode uses its own fixed 80 questions until exited
+        renderCurrentView();
+        return;
+      }
+
+      let base = [...RAW_QUESTIONS];
+
+      if (currentMode === "wrong") {
+        base = base.filter(q => userState.wrongIds.includes(q.id));
+      } else if (currentMode === "star") {
+        base = base.filter(q => userState.starIds.includes(q.id));
+      }
+
+      if (cat !== "all") {
+        base = base.filter(q => q.category === cat);
+      }
+
+      if (type === "single") {
+        base = base.filter(q => q.type === "single");
+      } else if (type === "judge") {
+        base = base.filter(q => q.type === "judge");
+      } else if (type === "judge_false") {
+        base = base.filter(q => q.type === "judge" && q.a === "N");
+      } else if (type === "unanswered") {
+        base = base.filter(q => !userState.answered[q.id]);
+      }
+
+      if (kw) {
+        base = base.filter(q =>
+          q.q.toLowerCase().includes(kw) ||
+          q.options.some(o => o.toLowerCase().includes(kw))
+        );
+      }
+
+      if (elChkRandomOrder.checked) {
+        base = [...base].sort(() => Math.random() - 0.5);
+      }
+
+      filteredList = base;
+      if (!preserveIndex || currentIndex >= filteredList.length) {
+        currentIndex = 0;
+      }
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      updateHeaderStats();
+
+      if (currentMode === "list") {
+        elCardView.classList.add("hidden");
+        elListView.classList.remove("hidden");
+        renderListView();
+      } else {
+        elListView.classList.add("hidden");
+        elCardView.classList.remove("hidden");
+        renderCardView();
+      }
+    }
+
+    function renderCardView() {
+      if (filteredList.length === 0) {
+        elBadgeType.textContent = "空列表";
+        elBadgeCat.textContent = "-";
+        elBadgeId.textContent = "-";
+        elCounter.textContent = "0 / 0";
+        elProgress.value = 0;
+        elProgress.max = 1;
+        elStem.textContent = currentMode === "wrong"
+          ? "🎉 太棒了！当前筛选条件下没有错题！"
+          : currentMode === "star"
+          ? "⭐ 还没有收藏的题目，刷题时点击右上角「收藏本题」即可加入！"
+          : "没有找到匹配的题目，请调整上方筛选条件或清除搜索关键词。";
+        elOptions.innerHTML = "";
+        elFeedback.classList.add("hidden");
+        elBtnPrev.disabled = true;
+        elBtnNext.disabled = true;
+        return;
+      }
+
+      const q = filteredList[currentIndex];
+      const isJudge = q.type === "judge";
+      const record = userState.answered[q.id];
+      const isStarred = userState.starIds.includes(q.id);
+      const showAnswerImmediately = currentMode === "memorize" || Boolean(record);
+
+      elBadgeType.textContent = isJudge ? "判断题" : "单选题";
+      elBadgeType.className = isJudge
+        ? "px-2 py-0.5 rounded font-semibold bg-purple-500/15 text-purple-500"
+        : "px-2 py-0.5 rounded font-semibold bg-blue-500/15 text-blue-500";
+      elBadgeCat.textContent = q.category;
+      elBadgeId.textContent = `题库 #${q.id}`;
+      elCounter.textContent = `${currentIndex + 1} / ${filteredList.length}`;
+      elProgress.max = filteredList.length;
+      elProgress.value = currentIndex + 1;
+
+      elBtnStarCurrent.textContent = isStarred ? "★ 已收藏" : "☆ 收藏本题";
+      elBtnStarCurrent.className = isStarred
+        ? "px-2.5 py-1 rounded-lg border border-amber-500 text-amber-500 text-xs font-semibold"
+        : "px-2.5 py-1 rounded-lg border border-[var(--border)] text-xs font-medium hover:opacity-80";
+
+      elStem.textContent = `${currentIndex + 1}. ${q.q}`;
+
+      // Build options
+      elOptions.innerHTML = "";
+      const keys = isJudge ? ["Y", "N"] : ["A", "B", "C", "D"];
+
+      q.options.forEach((optText, idx) => {
+        const key = keys[idx];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.key = key;
+
+        let styleClass = "w-full text-left p-3.5 rounded-xl border transition flex items-start gap-3 text-sm md:text-base ";
+
+        if (showAnswerImmediately) {
+          if (key === q.a) {
+            styleClass += "border-emerald-500 bg-emerald-500/10 text-[var(--foreground)] font-semibold";
+          } else if (record && record.choice === key && !record.correct) {
+            styleClass += "border-rose-500 bg-rose-500/10 text-rose-500 font-medium";
+          } else {
+            styleClass += "border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] opacity-75";
+          }
+        } else {
+          styleClass += "border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--primary)]";
+        }
+
+        btn.className = styleClass;
+
+        const badge = document.createElement("span");
+        badge.className = "w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-[var(--border)] bg-[var(--card)]";
+        badge.textContent = isJudge ? (key === "Y" ? "✓" : "✕") : key;
+
+        const spanText = document.createElement("span");
+        spanText.className = "flex-1 leading-relaxed";
+        spanText.textContent = optText;
+
+        btn.appendChild(badge);
+        btn.appendChild(spanText);
+
+        btn.addEventListener("click", () => handleSelectOption(q, key));
+        elOptions.appendChild(btn);
+      });
+
+      // Render feedback if answered or in memorize mode
+      if (showAnswerImmediately) {
+        renderFeedback(q, record ? record.choice : q.a, record ? record.correct : true, currentMode === "memorize" && !record);
+      } else {
+        elFeedback.classList.add("hidden");
+      }
+
+      elBtnPrev.disabled = currentIndex === 0;
+      elBtnNext.disabled = currentIndex >= filteredList.length - 1;
+    }
+
+    function renderFeedback(q, userChoice, isCorrect, isMemorizePreview = false) {
+      elFeedback.classList.remove("hidden");
+      if (isMemorizePreview) {
+        elFeedback.className = "rounded-xl p-4 border border-blue-500/40 bg-blue-500/10 text-sm space-y-1.5";
+        elFeedbackTitle.className = "font-bold text-blue-500";
+        elFeedbackTitle.textContent = `📖 背题模式 · 标准答案：${q.a}`;
+      } else if (isCorrect) {
+        elFeedback.className = "rounded-xl p-4 border border-emerald-500/40 bg-emerald-500/10 text-sm space-y-1.5";
+        elFeedbackTitle.className = "font-bold text-emerald-500";
+        elFeedbackTitle.textContent = `✅ 回答正确！标准答案：${q.a}`;
+      } else {
+        elFeedback.className = "rounded-xl p-4 border border-rose-500/40 bg-rose-500/10 text-sm space-y-1.5";
+        elFeedbackTitle.className = "font-bold text-rose-500";
+        elFeedbackTitle.textContent = `❌ 回答错误！你的选择：${userChoice} · 标准答案：${q.a}（已自动加入错题本）`;
+      }
+      elFeedbackBody.textContent = getExplanation(q);
+    }
+
+    function handleSelectOption(q, choiceKey) {
+      const isCorrect = choiceKey === q.a;
+      userState.answered[q.id] = { choice: choiceKey, correct: isCorrect };
+
+      if (!isCorrect) {
+        if (!userState.wrongIds.includes(q.id)) {
+          userState.wrongIds.push(q.id);
+        }
+      } else if (currentMode === "wrong") {
+        // In wrong-question mode, answering correctly removes it from wrongIds on next refresh or keeps badge
+        userState.wrongIds = userState.wrongIds.filter(id => id !== q.id);
+      }
+
+      saveState();
+      renderCardView();
+
+      if (isCorrect && elChkAutoNext.checked && currentMode !== "memorize") {
+        setTimeout(() => {
+          if (currentIndex < filteredList.length - 1) {
+            currentIndex++;
+            renderCardView();
+          }
+        }, 480);
+      }
+    }
+
+    function renderListView() {
+      elListCount.textContent = filteredList.length;
+      elListContainer.innerHTML = "";
+      const maskAnswers = elChkListMask.checked;
+
+      const slice = filteredList.slice(0, 150); // Render up to 150 at a time for smooth DOM performance
+      slice.forEach((q, idx) => {
+        const card = document.createElement("div");
+        card.className = "bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-2 text-sm";
+
+        const top = document.createElement("div");
+        top.className = "flex items-center justify-between text-xs text-[var(--muted-foreground)]";
+        top.innerHTML = `<span><strong>#${q.id}</strong> · ${q.category} · ${q.type === "judge" ? "判断题" : "单选题"}</span>`;
+
+        const stem = document.createElement("div");
+        stem.className = "font-semibold text-[var(--foreground)]";
+        stem.textContent = `${idx + 1}. ${q.q}`;
+
+        const ansBox = document.createElement("div");
+        const idxOpt = ["A", "B", "C", "D"].indexOf(q.a);
+        const ansText = q.type === "judge"
+          ? (q.a === "Y" ? "正确 (Y)" : "错误 (N)")
+          : `${q.a}. ${q.options[idxOpt] || ""}`;
+
+        ansBox.className = maskAnswers
+          ? "p-2.5 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs cursor-pointer select-none text-[var(--muted-foreground)]"
+          : "p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-[var(--foreground)]";
+
+        const fullDetail = `✅ 答案：${ansText} ｜ 💡 ${getExplanation(q)}`;
+        ansBox.textContent = maskAnswers ? "🔒 点击显示本题答案与解析" : fullDetail;
+
+        if (maskAnswers) {
+          ansBox.addEventListener("click", () => {
+            ansBox.className = "p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-[var(--foreground)]";
+            ansBox.textContent = fullDetail;
+          });
+        }
+
+        card.appendChild(top);
+        card.appendChild(stem);
+        card.appendChild(ansBox);
+        elListContainer.appendChild(card);
+      });
+    }
+
+    function startMockExam() {
+      const singles = RAW_QUESTIONS.filter(q => q.type === "single").sort(() => Math.random() - 0.5).slice(0, 50);
+      const judges = RAW_QUESTIONS.filter(q => q.type === "judge").sort(() => Math.random() - 0.5).slice(0, 30);
+      filteredList = [...singles, ...judges];
+      currentIndex = 0;
+
+      // Clear previous answers for these exam questions so user can take a fresh test
+      filteredList.forEach(q => {
+        delete userState.answered[q.id];
+      });
+      saveState();
+
+      examSecondsLeft = 45 * 60;
+      elExamTimerBox.classList.remove("hidden");
+      elExamTimerBox.classList.add("flex");
+      if (examTimer) clearInterval(examTimer);
+      examTimer = setInterval(() => {
+        examSecondsLeft--;
+        if (examSecondsLeft <= 0) {
+          clearInterval(examTimer);
+          submitMockExam();
+          return;
+        }
+        const m = String(Math.floor(examSecondsLeft / 60)).padStart(2, "0");
+        const s = String(examSecondsLeft % 60).padStart(2, "0");
+        elExamTimerText.textContent = `${m}:${s}`;
+      }, 1000);
+
+      renderCurrentView();
+    }
+
+    function submitMockExam() {
+      if (examTimer) clearInterval(examTimer);
+      let correctSingle = 0;
+      let correctJudge = 0;
+      let unanswered = 0;
+
+      filteredList.forEach(q => {
+        const rec = userState.answered[q.id];
+        if (!rec) {
+          unanswered++;
+        } else if (rec.correct) {
+          if (q.type === "single") correctSingle++;
+          else correctJudge++;
+        }
+      });
+
+      // 50 singles * 1.4 = 70 pts, 30 judges * 1 = 30 pts -> 100 pts total
+      const totalScore = Math.round(correctSingle * 1.4 + correctJudge * 1.0);
+      elExamResultContent.innerHTML = `
+        <div class="text-center py-3 bg-[var(--background)] rounded-xl border border-[var(--border)]">
+          <div class="text-xs text-[var(--muted-foreground)]">模拟考总得分（满分100分）</div>
+          <div class="text-3xl font-extrabold mt-1 ${totalScore >= 60 ? "text-emerald-500" : "text-rose-500"}">${totalScore} 分</div>
+        </div>
+        <ul class="space-y-1.5 text-xs md:text-sm">
+          <li>• 单选题（50题）：答对 <strong>${correctSingle}</strong> 题</li>
+          <li>• 判断题（30题）：答对 <strong>${correctJudge}</strong> 题</li>
+          <li>• 未作答题目：<strong>${unanswered}</strong> 题</li>
+        </ul>
+      `;
+      elExamDialog.showModal();
+    }
+
+    // Event Listeners
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.mode;
+        currentMode = mode;
+
+        document.querySelectorAll(".mode-btn").forEach(b => {
+          b.className = b === btn
+            ? "mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] transition"
+            : "mode-btn px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:opacity-90 transition";
+        });
+
+        if (mode === "exam") {
+          startMockExam();
+        } else {
+          elExamTimerBox.classList.add("hidden");
+          elExamTimerBox.classList.remove("flex");
+          if (examTimer) clearInterval(examTimer);
+          applyFilters(false);
+        }
+      });
+    });
+
+    elFilterCategory.addEventListener("change", () => applyFilters(false));
+    elFilterType.addEventListener("change", () => applyFilters(false));
+    elChkRandomOrder.addEventListener("change", () => applyFilters(false));
+    elChkListMask.addEventListener("change", () => renderListView());
+
+    // IME-safe search input handling per modern-web-guidance (ime-safe-enter-submit)
+    let lastCompositionEndAt = null;
+    elSearchInput.addEventListener("compositionend", (event) => {
+      lastCompositionEndAt = event.timeStamp;
+    });
+
+    elSearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (event.isComposing || event.keyCode === 229) {
+          return;
+        }
+        if (
+          lastCompositionEndAt !== null &&
+          Math.abs(event.timeStamp - lastCompositionEndAt) < 50
+        ) {
+          return;
+        }
+        elSearchForm.requestSubmit();
+      }
+    });
+
+    elSearchInput.addEventListener("input", () => {
+      applyFilters(false);
+    });
+
+    elSearchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      applyFilters(false);
+    });
+
+    elBtnClearSearch.addEventListener("click", () => {
+      elSearchInput.value = "";
+      applyFilters(false);
+    });
+
+    elBtnPrev.addEventListener("click", () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderCardView();
+      }
+    });
+
+    elBtnNext.addEventListener("click", () => {
+      if (currentIndex < filteredList.length - 1) {
+        currentIndex++;
+        renderCardView();
+      }
+    });
+
+    elBtnShowAns.addEventListener("click", () => {
+      if (!filteredList[currentIndex]) return;
+      const q = filteredList[currentIndex];
+      renderFeedback(q, q.a, true, true);
+    });
+
+    elBtnStarCurrent.addEventListener("click", () => {
+      if (!filteredList[currentIndex]) return;
+      const q = filteredList[currentIndex];
+      const idx = userState.starIds.indexOf(q.id);
+      if (idx === -1) {
+        userState.starIds.push(q.id);
+      } else {
+        userState.starIds.splice(idx, 1);
+      }
+      saveState();
+      renderCardView();
+    });
+
+    document.getElementById("btn-open-grid").addEventListener("click", () => {
+      elGridContainer.innerHTML = "";
+      filteredList.forEach((q, idx) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        const rec = userState.answered[q.id];
+        const starred = userState.starIds.includes(q.id);
+        let cls = "py-1.5 rounded text-xs font-semibold border transition ";
+        if (idx === currentIndex) {
+          cls += "ring-2 ring-[var(--primary)] ";
+        }
+        if (rec) {
+          cls += rec.correct
+            ? "bg-emerald-500/20 border-emerald-500 text-emerald-500"
+            : "bg-rose-500/20 border-rose-500 text-rose-500";
+        } else {
+          cls += "bg-[var(--background)] border-[var(--border)] text-[var(--foreground)]";
+        }
+        b.className = cls;
+        b.textContent = `${idx + 1}${starred ? "★" : ""}`;
+        b.addEventListener("click", () => {
+          currentIndex = idx;
+          if (currentMode === "list") {
+            currentMode = "practice";
+          }
+          renderCurrentView();
+          elGridDialog.close();
+        });
+        elGridContainer.appendChild(b);
+      });
+      elGridDialog.showModal();
+    });
+
+    document.getElementById("btn-reset-progress").addEventListener("click", () => {
+      userState.answered = {};
+      userState.wrongIds = [];
+      saveState();
+      renderCurrentView();
+    });
+
+    document.getElementById("btn-submit-exam").addEventListener("click", () => {
+      submitMockExam();
+    });
+
+    document.getElementById("btn-exam-review-wrong").addEventListener("click", () => {
+      elExamDialog.close();
+      const wrongBtn = document.querySelector('[data-mode="wrong"]');
+      if (wrongBtn) wrongBtn.click();
+    });
+
+    // Global Keyboard Shortcuts
+    document.addEventListener("keydown", (event) => {
+      if (
+        document.activeElement === elSearchInput ||
+        elGridDialog.open ||
+        elExamDialog.open ||
+        currentMode === "list"
+      ) {
+        return;
+      }
+      const q = filteredList[currentIndex];
+      if (!q) return;
+
+      const key = event.key.toUpperCase();
+      if (q.type === "judge") {
+        if (key === "1" || key === "A" || key === "Y") {
+          handleSelectOption(q, "Y");
+        } else if (key === "2" || key === "B" || key === "N") {
+          handleSelectOption(q, "N");
+        }
+      } else {
+        const map = { "1": "A", "2": "B", "3": "C", "4": "D", A: "A", B: "B", C: "C", D: "D" };
+        if (map[key]) {
+          handleSelectOption(q, map[key]);
+        }
+      }
+
+      if (event.key === "ArrowLeft" && currentIndex > 0) {
+        currentIndex--;
+        renderCardView();
+      } else if (event.key === "ArrowRight" && currentIndex < filteredList.length - 1) {
+        currentIndex++;
+        renderCardView();
+      } else if (key === "F") {
+        elBtnStarCurrent.click();
+      }
+    });
+
+    // Initialize 433 questions quiz app
+    applyFilters(false);
+  </script>
+</body>
+</html>
